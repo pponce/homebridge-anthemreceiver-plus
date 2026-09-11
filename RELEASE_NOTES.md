@@ -1,30 +1,28 @@
-# Anthem Receiver Plus 1.0.0
+# Anthem Receiver Plus 1.1.0
 
-First stable release of the independent `homebridge-anthemreceiver-plus` project.
+Adds advanced read-only diagnostics for recognized and unknown Anthem hardware, with shareable reports for troubleshooting and future compatibility investigations.
 
-- **A more useful Home app volume slider:** set Maximum volume (dB) to match your receiver's limit; the full slider then covers your configured range, with 100% at that limit.
-- **Modern settings:** grouped controls, inline validation, readable day/night themes, and a read-only receiver connection preview.
-- **More dependable control:** buffered and validated TCP replies, controlled reconnection and state refresh, confirmed state changes, and corrected zone/input handling.
-- **Audio Listening Mode None:** a dedicated selection on protocol V02 receivers, preserving existing listening-mode switch identifiers.
-- **Homebridge 1/2 and Node 22/24:** automated receiver, migration, browser/theme, and package-install checks.
-- **Independent package with continuity:** retains the `AnthemReceiver` platform alias and existing accessory identity rules. Original attribution and license are retained.
+## Changes
 
-## Installation
+- Fix Homebridge version discovery when package exports hide its manifest. Add detected-state and query-count summaries, distinguish optional user-reported power state, and explain rejected alternate-format queries in the UI and schema-v2 JSON reports.
 
-For a new installation with the Homebridge APT wrapper:
+- Add generic advanced diagnostics to the configuration UI for recognized and unknown Anthem hardware, without changing runtime model support. Collect bounded read-only query outcomes, partial results, and optional raw reply/hex evidence.
+- Add report preview, copy/download actions, default privacy filtering, optional Zone 2 probing, and shared test cancellation/concurrency/cooldown safeguards.
 
-```bash
-sudo hb-service stop
-sudo hb-service add homebridge-anthemreceiver-plus
-sudo hb-service start
-```
+- Upgrade the build compiler to TypeScript 7.0.2 or compatible 7.x updates. Resolve its CLI through the exported package manifest so builds and direct GitHub installations work with TypeScript 7's package exports.
+- Remove the unused `ts-node` development dependency; development watching already builds JavaScript before starting Homebridge.
 
-You can also install or update **homebridge-anthemreceiver-plus** through Homebridge UI. See the [README](https://github.com/pponce/homebridge-anthemreceiver-plus#installing-or-updating).
+## Testing and compatibility
 
-## Migration and validation limits
+- The maintainer tested the diagnostics workflow on an MRX 540 8K.
+- Unknown-model diagnostics collect evidence; this release does not add STR or other new hardware to the supported-model list.
+- Report schema 2 separates user-reported power state from detected state and includes query counts and explanations. Copy and download contain the previewed JSON.
+- Existing settings and HomeKit accessory identities are preserved.
 
-Existing users can follow [MIGRATION.md](https://github.com/pponce/homebridge-anthemreceiver-plus/blob/main/MIGRATION.md) before replacing the old package. Do not load both packages for the same receiver or reset the existing bridge, accessory cache, or pairing data.
+## Update
 
-The owner reported successful receiver testing on an MRX 540 8K and a successful migration to Plus without changing existing scenes or automations. Automated tests cover main-bridge and child-bridge package replacement, including cache reassociation, HAP identifiers, and synthetic pairing records. Other models and custom setups may differ.
+Update homebridge-anthemreceiver-plus through Homebridge UI, then restart the relevant Homebridge instance or child bridge. Existing users do not need to remove accessories or reset pairing data.
 
-Not yet Homebridge verified. STR preamplifier support is not included. See [ACKNOWLEDGEMENTS.md](https://github.com/pponce/homebridge-anthemreceiver-plus/blob/main/ACKNOWLEDGEMENTS.md) for project origins.
+For users testing the GitHub branch: switch back to the npm package to receive stable releases.
+
+Requires Node.js 22 or 24 and Homebridge 1.8 or 2.x. Compiled dist files are included in the npm package and remain untracked in Git.
