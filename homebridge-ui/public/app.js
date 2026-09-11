@@ -136,8 +136,18 @@ async function runDiagnostics() {
     const report = result.report;
     output.append(node('p', report.connection === 'connected' ? 'TCP connection established.' : 'TCP connection was not established.', 'alert alert-info'));
     output.append(node('p', `${report.model || 'No model identified'} · ${report.recognizedModel ? 'Recognized by this plugin' : 'Not recognized by this plugin'}. Diagnostic replies do not confirm control or HomeKit compatibility.`));
-    output.append(node('p', `Run ended: ${report.finishReason}. ${report.queries.filter(query => query.outcome === 'answered').length} of ${report.queries.length} attempted queries answered.`));
-    output.append(table(['Query', 'Outcome', 'Time (ms)'], report.queries.map(query => [query.command, query.outcome, query.elapsedMs]), 'Read-only diagnostic results'));
+    const summary = AnthemDiagnosticReport.summarize(report);
+    output.append(node('p', `Run ended: ${report.finishReason}. ${summary.queries.answered} of ${summary.queries.attempted} attempted queries answered; ${summary.queries.expectedAlternativeRejections} expected alternate-format rejections.`));
+    output.append(node('p', `Your observed power state: ${context.powerState === 'unknown' ? 'Not specified' : context.powerState}. Detected states below come from the device replies.`));
+    const unknown = value => value === null ? 'Unknown' : value;
+    if (summary.detectedState.zones.length) output.append(table(['Zone', 'Power', 'Mute', 'Volume (dB)', 'Volume (%)', 'Input'],
+      summary.detectedState.zones.map(zone => [zone.zone, zone.power === null ? 'Unknown' : zone.power === 'on' ? 'On' : 'Off',
+        zone.muted === null ? 'Unknown' : zone.muted ? 'Muted' : 'Unmuted', unknown(zone.volumeDb), unknown(zone.volumePercent), unknown(zone.input)]), 'Detected device state'));
+    output.append(table(['Query', 'Outcome', 'Time (ms)', 'Meaning'], report.queries.map(query => {
+      const detail = AnthemDiagnosticReport.explain(query, report.queries);
+      return [query.command, detail.expectedAlternativeRejection ? 'Rejected (expected alternate format)' : query.outcome,
+        query.elapsedMs, `${detail.purpose}: ${detail.explanation}`];
+    }), 'Read-only diagnostic results'));
     const privacy = document.createElement('input'); privacy.type = 'checkbox'; privacy.className = 'form-check-input'; privacy.id = 'diagnostic-private';
     const privacyLabel = node('label', undefined, 'anthem-toggle'); privacyLabel.append(privacy, document.createTextNode(' Include raw replies and device identifiers'));
     output.append(privacyLabel, node('p', 'The report below is exactly what will be copied or downloaded. Review it before attaching it to an issue. Raw replies can contain serial numbers, input names, and other device information.', 'anthem-help'));

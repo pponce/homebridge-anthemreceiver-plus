@@ -2,6 +2,7 @@
 const { HomebridgePluginUiServer } = require('@homebridge/plugin-ui-utils');
 const { normalizeConfig } = require('../dist/config');
 const { ConnectionTester } = require('../dist/ui-test');
+const { getHomebridgeVersion } = require('./environment');
 
 class AnthemUiServer extends HomebridgePluginUiServer {
   constructor() {
@@ -18,8 +19,7 @@ class AnthemUiServer extends HomebridgePluginUiServer {
     this.onRequest('/diagnostics', async request => {
       try {
         const report = await tester.diagnose(request?.config, request?.includeZone2 === true);
-        let homebridgeVersion = 'Unavailable';
-        try { homebridgeVersion = require('homebridge/package.json').version; } catch { /* Optional environment detail. */ }
+        const homebridgeVersion = getHomebridgeVersion();
         return { ok: true, report: { ...report, environment: {
           plugin: require('../package.json').version, node: process.version,
           platform: process.platform, architecture: process.arch, homebridge: homebridgeVersion,

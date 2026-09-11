@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix Homebridge version discovery when package exports hide its manifest. Add detected-state and query-count summaries, distinguish optional user-reported power state, and explain rejected alternate-format queries in the UI and schema-v2 JSON reports.
+
 - Add generic advanced diagnostics to the configuration UI for recognized and unknown Anthem hardware, without changing runtime model support. Collect bounded read-only query outcomes, partial results, and optional raw reply/hex evidence.
 - Add report preview, copy/download actions, default privacy filtering, optional Zone 2 probing, and shared test cancellation/concurrency/cooldown safeguards.
 

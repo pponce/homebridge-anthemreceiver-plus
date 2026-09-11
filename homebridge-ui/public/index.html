@@ -11,7 +11,7 @@
         <p class="anthem-help">Collect read-only protocol replies from any Anthem model, including unrecognized devices. This does not enable hardware support or verify control commands. The probe samples existing Anthem query formats and may take up to 30 seconds.</p>
         <div class="anthem-grid">
           <div class="anthem-field"><label for="diagnostic-model">Model printed on the device (optional)</label><input id="diagnostic-model" class="form-control" maxlength="120" placeholder="For example: STR Preamplifier"></div>
-          <div class="anthem-field"><label for="diagnostic-power">Device power state during this test</label><select id="diagnostic-power" class="form-control"><option value="unknown">Unknown</option><option value="on">On</option><option value="standby">Standby</option></select></div>
+          <div class="anthem-field"><label for="diagnostic-power">Your observed power state (optional)</label><select id="diagnostic-power" class="form-control"><option value="unknown">Not specified</option><option value="on">On</option><option value="standby">Standby</option></select><small>This is your observation. Detected zone power is shown separately in the results.</small></div>
         </div>
         <label class="anthem-toggle"><input id="diagnostic-zone2" type="checkbox" class="form-check-input"> Also query Zone 2 (if relevant to this device)</label>
         <p class="anthem-help">For a first test, turn the device on yourself. A missing reply in standby does not prove a feature is unsupported. Devices that limit simultaneous connections may require their plugin child bridge or other controller to be stopped first.</p>

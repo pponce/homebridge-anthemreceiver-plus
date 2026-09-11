@@ -130,3 +130,30 @@ test('unreachable endpoint returns a useful report and runner can be reused', as
   assert.equal(report.connection, 'not-connected'); assert.equal(report.finishReason, 'connection-error');
   const d = await device(t, normal); assert.equal((await runner.run(d.config)).finishReason, 'finished');
 });
+test('report separates user observation from detected state and explains alternate-format rejections', async t => {
+  const d = await device(t, normal);
+  const report = await new AnthemDiagnostics(100, 3000, 0).run(d.config);
+  const result = reportBuilder.build(report, { powerState: 'unknown' });
+  assert.equal(result.schemaVersion, 2);
+  assert.equal(result.userContext.userReportedPowerState, null);
+  assert.equal(result.userContext.powerState, undefined);
+  assert.deepEqual(result.summary.queries, { attempted: 12, answered: 10, rejected: 2, expectedAlternativeRejections: 2, otherOutcomes: 0 });
+  assert.deepEqual(result.summary.detectedState, { inputCount: 2, zones: [{ zone: 1, power: 'on', muted: false, volumeDb: -42.5, volumePercent: 35, input: 1 }] });
+  const serial = result.queries.find(q => q.command === 'IDN?');
+  assert.equal(serial.errorCode, '!I'); assert.match(serial.explanation, /GSN\? answered/);
+  const observed = reportBuilder.build(report, { powerState: 'standby' });
+  assert.equal(observed.userContext.userReportedPowerState, 'standby');
+  assert.equal(observed.summary.detectedState.zones[0].power, 'on');
+});
+test('missing state is never reported as off and unexpected rejections stay unexplained by alternatives', () => {
+  const report = { queries: [
+    { command: 'Z1POW?', outcome: 'timeout', replies: [] },
+    { command: 'IDN?', outcome: 'rejected', replies: ['!I'] },
+    { command: 'GSN?', outcome: 'timeout', replies: [] },
+  ] };
+  const summary = reportBuilder.summarize(report);
+  assert.equal(summary.detectedState.zones[0].power, null);
+  assert.equal(summary.queries.expectedAlternativeRejections, 0);
+  assert.equal(summary.queries.otherOutcomes, 2);
+  assert.equal(reportBuilder.explain(report.queries[1], report.queries).expectedAlternativeRejection, false);
+});
