@@ -43,8 +43,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "nodemon": "^3.1.9",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.4.5",
+    "typescript": "^7.0.2",
     "playwright": "^1.56.1"
   },
   "files": [

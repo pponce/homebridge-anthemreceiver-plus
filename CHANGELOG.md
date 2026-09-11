@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Upgrade the build compiler to TypeScript 7.0.2 or compatible 7.x updates. Resolve its CLI through the exported package manifest so builds and direct GitHub installations work with TypeScript 7's package exports.
+- Remove the unused `ts-node` development dependency; development watching already builds JavaScript before starting Homebridge.
+
 ## 1.0.0 — First stable Plus release
 
 - Add the project icon in `assets/icon.png` and display it above the README title.
