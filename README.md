@@ -54,7 +54,7 @@ Homebridge 1.8 and 2.x on Node.js 22 or 24 are supported. Automated checks cover
 
 Enabled standalone controls appear through Homebridge. Combined **Power/Input** accessories require the separate pairing step below.
 
-## Adding the Power/Input accessory on an iPhone
+## Adding the Power/Input accessory to the Home App
 
 Pair each enabled zone's Power/Input accessory once to make it available in Apple Home and the Apple TV Remote in Control Center.
 
@@ -80,19 +80,11 @@ Open the **Apple TV Remote** in your iPhone's Control Center and select the pair
 | Info | Show or hide the main-zone menu |
 | Center | Select a main-zone menu option |
 
-## Audio Listening Mode in Apple Home
-
-Enable Zone 1 **Audio Listening Mode** in the plugin settings to expose the mode switches on a protocol V02 receiver. With the zone powered on, turn **None** on to select the receiver's None listening mode. The plugin waits for receiver confirmation and updates the other mode switches from receiver feedback. None selects a listening mode; it does not mute the receiver or change ARC.
-
-The switches act as a mode selector: turn the mode you want on. Turning the selected switch off restores its confirmed state; to leave None, turn another mode on. All mode switches show Off when the zone is powered off.
-
-The None switch is added to the existing ALM accessory after updating and restarting Homebridge. Existing accessory and switch identifiers are preserved, so existing scenes and automations do not need to be recreated. Add None to any scene where you want to select it explicitly.
-
 ## Volume control in Apple Home
 
 Enable the zone's **Volume** accessory to get a slider in the Home app. HomeKit exposes this separate control as a lightbulb-style accessory: its brightness slider adjusts receiver volume, and its on/off control unmutes or mutes a powered-on zone. Use the zone's power control to turn the receiver on first.
 
-### Make the full slider useful
+### Make the full volume slider provide a more useful natural range of control in the home app.
 
 If you limit your Anthem to a maximum such as **−10 dB**, set the plugin's **Maximum volume (dB)** to the same value. The slider then spreads volume adjustments across that listening range. **100% means your chosen −10 dB maximum**, making the top of the slider meaningful instead of leaving part of its travel above the receiver's allowed range.
 
@@ -107,7 +99,7 @@ With a maximum of **−10 dB**, the slider behaves like this:
 | 50% | Approximately −50 dB |
 | 100% | −10 dB |
 
-Values from 1–100% map linearly in dB, rounded to the receiver's 0.5 dB steps. A percentage is a position within your configured range, not a percentage of perceived loudness. Moving above 0% sends an unmute command as well as the requested volume.
+Values from 1–100% map linearly in dB, rounded to the receiver's 0.5 dB steps. A percentage is a position within your configured range. Moving above 0% sends an unmute command as well as the requested volume.
 
 **Set the maximum on the receiver itself, then enter the same value in the plugin.** The plugin setting controls slider mapping; it does not change the Anthem's own maximum-volume setting or limit other remotes. One plugin value is shared by both zones, so check your zone limits if you use Zone 2.
 
