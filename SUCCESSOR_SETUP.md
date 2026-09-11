@@ -1,62 +1,46 @@
-# Standalone project setup and release sequence
+# Standalone project and stable release workflow
 
-This project is prepared from predecessor commit `341c167b3f95809f6e40a2b11a13ea40879fecd0`, after merging PR #10 (reliability/UI/docs) and PR #11 (ALM None). It retains that Git ancestry. Its staging branch is `release/anthemreceiver-plus` in the old repository; that branch is a handoff source, not a PR to merge back into the old package's master branch.
+The independent [pponce/homebridge-anthemreceiver-plus](https://github.com/pponce/homebridge-anthemreceiver-plus) repository is created with `main` as its default branch and the inherited history preserved. GitHub confirms it is not a fork. The previous repository and local checkout are retained; repository creation does not need to be run again.
 
-## Preparation validation
+The initial standalone [CI run 34622442946](https://github.com/pponce/homebridge-anthemreceiver-plus/actions/runs/34622442946) passed all five jobs at `3a9bba33b5c69384a7a4bb266794a9fae188da09`. This covers Node 22/24 × Homebridge 1/2, receiver and migration tests, browser themes, archive installation, and direct GitHub installation.
 
-[CI run 34620834574](https://github.com/pponce/homebridge-anthemreceiver/actions/runs/34620834574) passed all five jobs at commit 702549caacddaa4d7f9e930e8eb2f519b4ab96fe, including the real-Homebridge migration regression across Node 22/24 and Homebridge 1/2, browser/theme checks, production archive installation and direct GitHub installation. The final handoff commit adds this record and script safeguards; use the final commit supplied in the setup commands. Actual Apple Home scenes/automations and the owner's child-bridge path have not yet been migration-tested.
+## Publish 1.0.0
 
-## 1. Create the new local checkout and standalone GitHub repository
+The owner chose to skip beta publication and publish the first Plus version as stable `1.0.0`. The npm publisher account is `klidec`; the GitHub owner is `pponce`. A release label does not establish additional hardware or Apple Home migration coverage.
 
-Run the supplied checkout commands on the computer where you keep development repositories, not inside the running Homebridge plugin directory. The proposed path is `~/devProjects/homebridge-anthemreceiver-plus`; the previous checkout is retained.
-
-The checkout needs Git, Node.js, and GitHub CLI (`gh`). Authenticate `gh` to GitHub as `pponce` with `gh auth login --hostname github.com` if needed. Use the exact tested staging commit supplied with the handoff; do not silently include later branch changes.
-
-After cloning and selecting that commit, run:
+Use the development checkout, not the running Homebridge plugin directory. Run without sudo:
 
 ```bash
-bash scripts/create-standalone-repository.sh
+(
+  set -euo pipefail
+  cd ~/devProjects/homebridge-anthemreceiver-plus
+  [[ "$(git branch --show-current)" == main && -z "$(git status --porcelain)" ]] || {
+    echo 'Use a clean main checkout before releasing.' >&2
+    exit 1
+  }
+  git pull --ff-only origin main
+  bash scripts/publish-release.sh
+)
 ```
 
-The script creates a new public repository using GitHub's normal repository-creation API, not the Fork action. It pushes the inherited commit history to `main`, enables issues, and sets the new origin. The old source remote is kept as `history-source` with pushes disabled. It does not delete or archive the old repository, copy old release tags, change the running Homebridge installation, or publish to npm.
+If npm authentication is missing or uses a different account, run `npm login` as `klidec` and retry. GitHub CLI must also be authenticated with access to this repository. Authentication and 2FA prompts remain in your terminal.
 
-If the target already exists, it must be a public standalone repository with no branches, or an exact repeat of the same `main` commit. Other content stops the script without a force-push. Git history is retained, but old PR conversations, issues, GitHub releases, secrets, settings and repository permissions are not copied. Those records remain in the original repository. Weekly Dependabot configuration and CI workflow files are included in the new source.
+The script:
+- Requires the correct package, a stable version, a clean main branch, and the standalone origin.
+- Verifies npm account `klidec`, the public registry, and existing package maintainership if the name is already published.
+- Waits for CI on the exact main commit and stops if it fails.
+- Checks existing release-tag identity, builds/tests the source, checks package contents, and packs compiled dist and UI files.
+- Publishes the archive under npm `latest`, verifies its integrity and dist-tag, and creates the matching GitHub release with RELEASE_NOTES.md.
+- Allows an identical already-published package to complete the GitHub release on a rerun. A version with different published contents must not be overwritten.
 
-After setup, the printed repository metadata must show `fork: false`, `default_branch: main`, and `issues: true`. Check GitHub Actions. If repository access in ChatGPT is restricted to selected repositories, grant the GitHub connector access to this new repository so subsequent edits can be made there.
+The script does not modify your running Homebridge installation or submit a Homebridge verification request. No compiled output needs to be committed to Git. The older publish-beta.sh remains historical tooling and rejects stable package versions.
 
-## 2. Verify the new repository and prepare npm access
+## Migration and verification
 
-Wait for `Build, Test and Package` to pass for the new repository's exact main commit. If GitHub asks to enable Actions, enable them and run the workflow. The four Node 22/24 × Homebridge 1/2 jobs exercise type checking, receiver tests, real-Homebridge migration, browser/theme checks and archive installation; a fifth job tests direct GitHub installation.
+Read [MIGRATION.md](MIGRATION.md) before replacing the old installed package. Preserve configuration, bridge/child-bridge identity, cache, and pairing data. Do not install both packages together for the same receiver.
 
-The candidate uses version `1.0.0-beta.1`. Name availability could not be established through the restricted preparation environment; successful GitHub creation does not reserve the npm package name. Check before publishing:
+The predecessor was tested by the owner on an MRX 540 8K. The renamed Plus package still needs real installation, scene/automation, and child-bridge migration validation. Record those results before claiming hardware-verified migration.
 
-```bash
-npm view homebridge-anthemreceiver-plus name version maintainers --json
-```
+Use [VERIFICATION_PREPARATION.md](VERIFICATION_PREPARATION.md) for the later Homebridge request and recheck its current requirements. The new package is not yet Homebridge verified; no request has been sent.
 
-An npm `E404` indicates the package was not found at that time; network/authentication errors do not establish availability. If another owner has published it, stop and choose a different name or resolve ownership. Authenticate to npm with `npm login` if needed. Do not use sudo for publishing from the development checkout.
-
-## 3. Publish the beta when ready
-
-From the new clean `main` checkout, explicitly run:
-
-```bash
-bash scripts/publish-beta.sh
-```
-
-The script requires local main to match GitHub main and a successful push or manually dispatched CI run for that commit. It installs dependencies, reruns build/runtime/migration/package checks, packs the compiled files, and publishes under npm's `beta` tag. It compares package integrity and creates a GitHub prerelease at the same commit. It does not intentionally promote the package to `latest` or install it into Homebridge. If publication succeeded but a later step failed, an identical package can be verified and the GitHub release completed on a rerun.
-
-Normal npm authentication/2FA may prompt in your terminal. GitHub and npm credentials remain separate. The script checks `beta`, not `latest`, because this is a prerelease. It never prints authentication tokens.
-
-## 4. Test migration on the running receiver installation
-
-Read MIGRATION.md first. The new local development directory can coexist with the old one. Replacing the plugin in Homebridge is a separate operation and should preserve the actual host's prefix, configuration, bridge identity, accessory cache and persistence. Confirm whether the installation uses a child bridge before selecting exact host commands.
-
-The predecessor was reported to work on the owner's MRX 540 8K. That report does not yet establish that the renamed package preserves the owner's Apple Home scenes and automations. Test those explicitly and record the result before describing migration as verified on hardware.
-
-## 5. Stable release and Homebridge verification
-
-After successful real migration and any fixes, choose the stable version (normally `1.0.0`), update changelog/release status, publish the tested archive under `latest`, and create its GitHub release. Do not republish an existing version. Use VERIFICATION_PREPARATION.md to prepare the Homebridge request and recheck the current requirements. No verification request is sent automatically.
-
-Follow-up engineering: generate/review a dependency lockfile and adopt npm ci; extend hardware/child-bridge coverage. Current CI and beta publishing intentionally use the same unlocked installation approach inherited from the tested predecessor.
-
+Dependency lockfile adoption and broader hardware coverage remain follow-up work. Current CI and publication use the same unlocked dependency installation approach inherited from the tested predecessor.
