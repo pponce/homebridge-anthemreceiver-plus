@@ -107,10 +107,10 @@ function installFixture(parent, name) {
   return directory;
 }
 
-function pairingSnapshot(storage, seed = false) {
+function pairingSnapshot(storage, seed = false, expectedIdentities = 3) {
   const persist = path.join(storage, 'persist');
   const files = fs.readdirSync(persist).filter(name => /^AccessoryInfo\..*\.json$/.test(name)).sort();
-  assert.equal(files.length, 3, 'main bridge and both external TV identities should persist');
+  assert.equal(files.length, expectedIdentities, 'bridge and external TV identities should persist');
   return files.map(name => {
     const filename = path.join(persist, name);
     const info = JSON.parse(fs.readFileSync(filename, 'utf8'));
@@ -128,7 +128,8 @@ function pairingSnapshot(storage, seed = false) {
   });
 }
 
-test('package rename preserves cached accessories, HAP AIDs/IIDs, and seeded pairing records', { timeout: 75000 }, async t => {
+for (const childBridge of [false, true]) {
+test(`package rename preserves ${childBridge ? 'child-bridge' : 'main-bridge'} cached accessories, HAP AIDs/IIDs, and seeded pairing records`, { timeout: 75000 }, async t => {
   assert.equal(require('../dist/settings.js').PLATFORM_NAME, 'AnthemReceiver');
   assert.equal(require('../dist/settings.js').PLUGIN_NAME, plusName);
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'anthem-plus-migration-'));
@@ -148,22 +149,30 @@ test('package rename preserves cached accessories, HAP AIDs/IIDs, and seeded pai
       Zone1: { Name: 'Migration Zone 1', Active: true, Power: true, Mute: true, Volume: true, MultipleInputs: true, ALM: true },
       Zone2: { Name: 'Migration Zone 2', Active: true, Power: true, Volume: true } }] };
   fs.writeFileSync(path.join(storage, 'config.json'), JSON.stringify(config));
+  const controlPort = childBridge ? await freePort() : port;
+  if (childBridge) {
+    config.platforms[0]._bridge = { name: 'Migration Child Bridge', port: controlPort,
+      username: 'CD:' + [...crypto.randomBytes(5)].map(b => b.toString(16).padStart(2, '0')).join(':').toUpperCase() };
+    fs.writeFileSync(path.join(storage, 'config.json'), JSON.stringify(config));
+  }
   const configBefore = fs.readFileSync(path.join(storage, 'config.json'), 'utf8');
   const legacy = installFixture(path.join(directory, 'legacy'), legacyName);
-  const before = await runHomebridge(lifecycle, legacy, storage, port);
+  const before = await runHomebridge(lifecycle, legacy, storage, controlPort);
   await before.stop();
-  const pairingBefore = pairingSnapshot(storage, true);
+  const pairingBefore = pairingSnapshot(storage, true, childBridge ? 4 : 3);
   // No startup occurs between removing the legacy package and installing Plus.
   fs.rmSync(path.join(directory, 'legacy'), { recursive: true, force: true });
   const plus = installFixture(path.join(directory, 'plus'), plusName);
-  const after = await runHomebridge(lifecycle, plus, storage, port);
+  const after = await runHomebridge(lifecycle, plus, storage, controlPort);
   assert.deepEqual(after.main, before.main, 'bridged service and characteristic identifiers changed');
   assert.deepEqual(after.external, before.external, 'external TV identifiers changed');
   assert.match(after.logs(), /Plugin association is now being transformed/);
   await after.stop();
-  assert.deepEqual(pairingSnapshot(storage), pairingBefore, 'pairing identity changed');
+  assert.deepEqual(pairingSnapshot(storage, false, childBridge ? 4 : 3), pairingBefore, 'pairing identity changed');
   assert.equal(fs.readFileSync(path.join(storage, 'config.json'), 'utf8'), configBefore);
-  const cache = fs.readFileSync(path.join(storage, 'accessories', 'cachedAccessories'), 'utf8');
+  const cacheName = childBridge ? 'cachedAccessories.' + config.platforms[0]._bridge.username.replaceAll(':', '') : 'cachedAccessories';
+  const cache = fs.readFileSync(path.join(storage, 'accessories', cacheName), 'utf8');
   assert.ok(cache.includes(plusName));
   assert.equal(cache.includes('"' + legacyName + '"'), false);
 });
+}
