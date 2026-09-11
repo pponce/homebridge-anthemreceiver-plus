@@ -6,7 +6,7 @@
 
 **Independent successor maintained by Pedro Ponce de Leon.** This project retains the `AnthemReceiver` platform name and existing accessory identifiers to support migration from `homebridge-anthemreceiver`. It is not yet verified by Homebridge. See [migration guidance](MIGRATION.md) before replacing an existing installation, and [project origins](ACKNOWLEDGEMENTS.md) for upstream credit.
 
-**Release status:** `1.0.0` is prepared as the first stable Plus release. Published versions and release notes are listed in [GitHub Releases](https://github.com/pponce/homebridge-anthemreceiver-plus/releases); npm publication is a separate step.
+**Available on npm:** install **homebridge-anthemreceiver-plus** from Homebridge UI. See [GitHub Releases](https://github.com/pponce/homebridge-anthemreceiver-plus/releases) for version-specific release notes.
 
 Control your Anthem receiver from Apple Home and the Apple TV Remote on your iPhone. Choose the controls you want for each supported zone, including power, volume, mute, and input selection.
 
@@ -45,7 +45,7 @@ Homebridge 1.8 and 2.x on Node.js 22 or 24 are supported. Automated checks cover
 ## Getting started
 
 1. Install Homebridge and Homebridge UI.
-2. For a new installation, follow [Installing or updating](#installing-or-updating) below. Published npm packages include the compiled plugin and are the recommended release installation path. Existing users must follow [MIGRATION.md](MIGRATION.md) to replace the old package without resetting their setup.
+2. Install **homebridge-anthemreceiver-plus** from Homebridge UI, or use the [npm commands below](#installing-or-updating). If you use the old plugin, follow [Migrating from the original plugin](#migrating-from-the-original-plugin) first.
 3. Enable **Connected Standby** on the receiver. On supported models, this is in the receiver's web UI under **System Setup → General → General Settings**.
 4. Open the plugin's settings in Homebridge UI, enter the receiver address, and enable the accessories you want.
 5. Optionally set **Maximum volume (dB)** to match your receiver's maximum volume setting.
@@ -146,7 +146,7 @@ The receiver communication and accessory handling have been updated to make ever
 | Correct zone and configuration handling | Missing optional configuration sections and the default port are handled consistently. Zone 2 registers on compatible receivers, while SLM remains single-zone. |
 | Stable input updates | Refreshed input lists update using stable identifiers, reusing unchanged services and removing stale ones. Standalone input accessories no longer need to be removed and re-added to pick up the refreshed list. |
 | Listening-mode None selection | A dedicated None switch resolves the missing selection described in [upstream issue #19](https://github.com/EHylands/homebridge-anthemreceiver/issues/19), using receiver confirmation and preserving existing ALM switch identities. |
-| Automated regression checks | CI covers receiver simulations, configuration, command handling, browser themes, package contents, and direct GitHub installation. |
+| Automated regression checks | CI covers receiver simulations, configuration, command handling, browser themes, package contents, and migration. |
 
 Commands are not automatically replayed after a disconnect, avoiding repeated toggles or volume steps. Relative volume/listening-mode controls verify a subsequent state reply. Navigation and menu keys can only confirm that the command was written to the connection; the protocol does not provide equivalent confirmation of their effect.
 
@@ -154,65 +154,44 @@ For contributor setup, stable publication, and verification, see [SUCCESSOR_SETU
 
 See [CHANGELOG.md](CHANGELOG.md) for the change summary and [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md) for validation history and remaining follow-up work.
 
+## Migrating from the original plugin
+
+If you use `homebridge-anthemreceiver`, keep your existing configuration with `"platform": "AnthemReceiver"` and replace the package while Homebridge is stopped. Your existing accessories, pairings, scenes, and automations should carry over. The maintainer completed this migration successfully without changing any scenes or automations.
+
+**Download a Homebridge backup first, just to be safe.** Keep your existing bridge or child bridge and Apple Home accessories; do not reset or remove them.
+
+On a Linux installation using the **Homebridge APT `hb-service` wrapper**, run these commands in order:
+
+```bash
+sudo hb-service stop
+sudo hb-service remove homebridge-anthemreceiver
+sudo hb-service add homebridge-anthemreceiver-plus
+sudo hb-service start
+```
+
+Keep Homebridge stopped until the new package is installed successfully. After startup, check your existing controls, scenes, and automations. See [MIGRATION.md](MIGRATION.md) for a few additional notes.
+
 ## Installing or updating
 
-**Migrating from `homebridge-anthemreceiver`?** Follow [MIGRATION.md](MIGRATION.md) first. The commands below are for a new installation or an update to an already-installed Plus package. Installing both plugins together is not the migration procedure. Keep the existing `AnthemReceiver` platform configuration, bridge identity, cached accessories, and pairing data when replacing the old package.
+For a new installation or an update to Plus, search for **homebridge-anthemreceiver-plus** in Homebridge UI and install or update it there.
 
-### Published releases from npm
-
-Published npm packages include the compiled plugin and custom settings UI. No local checkout or manual build is required. After a stable release is published, you can search for **homebridge-anthemreceiver-plus** in Homebridge UI and install it there.
-
-For the **Homebridge APT package's `hb-service` wrapper**, install or update to the published stable version:
+With the **Homebridge APT `hb-service` wrapper**, you can also run:
 
 ```bash
-sudo hb-service stop &&
-sudo hb-service add homebridge-anthemreceiver-plus &&
+sudo hb-service stop
+sudo hb-service add homebridge-anthemreceiver-plus
 sudo hb-service start
 ```
 
-The bare npm package name selects npm's `latest` tag. You can also write `homebridge-anthemreceiver-plus@latest` explicitly.
+This installs the latest stable version from npm. If installation fails, resolve the error before starting Homebridge. These terminal commands apply to the APT installation; use the installer appropriate to your setup on other systems.
 
-You can replace the tag with an exact published version, for example `homebridge-anthemreceiver-plus@1.0.0`. The prepared version in this repository does not establish npm availability; the package/version must have been published first.
-
-### Installing or updating from GitHub
-
-To install this repository directly with the same APT wrapper:
-
-```bash
-sudo hb-service stop &&
-sudo hb-service add pponce/homebridge-anthemreceiver-plus &&
-sudo hb-service start
-```
-
-The `pponce/` prefix selects GitHub. Without a revision suffix, this installs the default branch, `main`, which may contain changes newer than the latest release. It does **not** select the newest GitHub Release or npm package.
-
-To select a particular GitHub revision, append `#` and a published tag, branch name, or commit SHA. For example, after the corresponding release tag exists:
-
-```bash
-sudo hb-service stop &&
-sudo hb-service add 'pponce/homebridge-anthemreceiver-plus#v1.0.0' &&
-sudo hb-service start
-```
-
-GitHub installation builds the source through npm's `prepare` script, so npm lifecycle scripts must be enabled and build dependencies must be available. The direct GitHub installation path is covered by CI. [npm Git installation behavior](https://docs.npmjs.com/cli/v11/commands/npm-install/#description)
-
-### Compiled files, changelog, and release notes
-
-The running plugin needs `dist`, but **compiled files do not need to be committed to this repository**. They are already ignored by Git. The publication process builds and checks the compiled files, then includes `dist` and the custom UI in the npm package. Installing that published package does not require compiling the plugin on your Homebridge machine.
-
-[CHANGELOG.md](CHANGELOG.md) records changes in the project, and [GitHub Releases](https://github.com/pponce/homebridge-anthemreceiver-plus/releases) provide version-specific release notes. Creating a GitHub Release does not publish to npm or compile GitHub's automatic source ZIP/tarball downloads; npm publication is a separate step. [The stable publishing script](scripts/publish-release.sh) publishes the built npm package under `latest` and creates the matching non-prerelease GitHub release.
-
-### After installation
-
-Open the plugin settings in Homebridge UI and restart as shown above. For normal Plus updates, keep the existing configuration and paired accessories. With the APT wrapper, inspect startup logs using:
+Open the plugin settings in Homebridge UI after a new installation. For normal Plus updates, keep your existing configuration and paired accessories. To inspect startup logs with the APT wrapper:
 
 ```bash
 sudo hb-service view
 ```
 
-The `&&` sequence starts Homebridge only after a successful installation. If installation fails, Homebridge stays stopped; inspect the error before retrying or reinstalling your previous version.
-
-These commands are for the APT wrapper, which passes package specifications to npm. Other `hb-service` implementations may accept only npm package names and versions; use Homebridge UI or the installer appropriate to your setup. [APT wrapper source](https://github.com/homebridge/homebridge-apt-pkg/blob/latest/deb/opt/homebridge/hb-service-shim)
+See [CHANGELOG.md](CHANGELOG.md) and [GitHub Releases](https://github.com/pponce/homebridge-anthemreceiver-plus/releases) for changes and release notes.
 
 ## Compatibility and troubleshooting
 

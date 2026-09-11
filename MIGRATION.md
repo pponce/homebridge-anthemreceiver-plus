@@ -1,58 +1,32 @@
 # Migrating to Anthem Receiver Plus
 
-The goal is to replace `homebridge-anthemreceiver` with `homebridge-anthemreceiver-plus` while preserving the same receiver configuration, Homebridge identity, cached accessories, and pairing data. A new npm name alone does not require new Apple Home accessories. Keeping display names alone is not sufficient to preserve them.
+If you already use `homebridge-anthemreceiver` and keep the default `"platform": "AnthemReceiver"` in your existing configuration, replacing the package should preserve your accessories, pairings, scenes, and automations. Do not remove any TV accessory bridge that was created by the older homebridge-anthemreceiver plugin. Do not remove the child bridge for the older plugin either. 
 
-## What changes and what stays
+The maintainer completed this migration successfully and reported that no changes to existing scenes or automations were needed. Other setups can differ, so **download a full backup from Homebridge UI before starting**.
 
-| Item | Plus behavior |
-| --- | --- |
-| Package / registered plugin identifier | `homebridge-anthemreceiver-plus` |
-| Platform / schema alias | `AnthemReceiver` stays unchanged |
-| Config keys and zone settings | Existing keys are retained |
-| Accessory UUID generation | Unchanged from the merged predecessor baseline |
-| Service UUIDs and subtypes | Unchanged; includes the previously added ALM None switch |
-| Main bridge or child bridge username and pairing data | Must be preserved during replacement |
-| External TV accessory identity | Same model/serial/zone UUID formula; persistent pairing data must remain |
+## Migration steps
 
-Homebridge 1.8.5 and 2.0.0 source include a cache-restoration path that looks up an active dynamic platform when the previous package cannot be found, then reassigns the cached accessory to the replacement plugin. This depends on a unique matching platform. Do not load the old and new packages together for the same receiver.
+Keep your existing receiver configuration, bridge or child bridge, and paired Apple Home accessories. Do not reset cached accessories or pairing data.
 
-The Plus integration test starts actual Homebridge with a legacy-name fixture and then Plus using the same storage and configuration. It compares bridged and external accessory AIDs/IIDs, cache ownership, and synthetic controller pairing records. The legacy fixture uses the same compiled implementation with only its package/plugin name changed, isolating the rename from older functional differences. This is not an end-to-end Apple Home migration test, and it does not prove migration from every upstream release or a separately created child bridge.
+On a Linux installation using the **Homebridge APT `hb-service` wrapper**, run these commands in order:
 
-The automated test passed on all four Node 22/24 × Homebridge 1/2 combinations in [CI run 34620834574](https://github.com/pponce/homebridge-anthemreceiver/actions/runs/34620834574). This confirms the tested host-level rename mechanism, not real Apple Home scene preservation.
+```bash
+sudo hb-service stop
+sudo hb-service remove homebridge-anthemreceiver
+sudo hb-service add homebridge-anthemreceiver-plus
+sudo hb-service start
+```
 
-## Before touching the running installation
+The new package comes from npm. Keep Homebridge stopped between removing the old plugin and installing Plus. If a command fails, resolve the error before proceeding; start Homebridge only after the new package installs successfully.
 
-1. Finish standalone repository creation and wait for the new repository's CI checks, including `test:migration`, to pass.
-2. Use Homebridge UI to download a full backup. Record the current installed commit/version and keep the previous package source available.
-3. Record a few existing Apple Home scenes and automations to check after migration. A Homebridge backup is not a complete backup of Apple's Home database.
-4. Check the current plugin configuration. Keep `platform: "AnthemReceiver"`, the existing zone flags, and any `_bridge` configuration exactly as they are. A qualified platform name, plugin allowlist, or plugin-specific child-bridge setup needs a targeted adjustment to the new package name while retaining the existing bridge username/storage. Do not create a new child bridge to perform the migration.
-5. Keep the same receiver model and serial identity. Do not reset cached accessories, Homebridge persistence, or Apple Home pairing.
+After startup, check the existing accessories and run a few scenes and automations. They should work without being recreated or paired again.
 
-## Replacement sequence for the owner's APT installation
+## A few notes
 
-The previously confirmed host uses the Homebridge APT `hb-service` wrapper and installs plugins under `/var/lib/homebridge`. The replacement sequence must occur while Homebridge stays stopped:
+- Keep the exact platform name `AnthemReceiver`, and retain any existing `_bridge` settings. Do not add a second platform block for Plus in the homebridge conf.
+- Run only the new plugin after migration; both packages register the same platform.
+- If you explicitly qualified the platform with the old package name or use a `plugins` allowlist, update that package reference to Plus while keeping your existing bridge settings.
+- These commands are for the Homebridge APT installation. Other installation methods need the equivalent package replacement while retaining configuration and pairing data.
+- If something does not reconnect, check Homebridge logs before removing anything from Apple Home. Use your backup to restore the previous setup if needed.
 
-1. Stop Homebridge.
-2. Remove only the old npm package from the existing installation prefix, with lifecycle scripts disabled. Do not use a UI action that also removes its configuration, child bridge, cached accessories, or pairing data.
-3. Install the tested Plus commit or published beta into that same prefix using the existing APT installation method.
-4. Confirm that only Plus is installed and the saved configuration/bridge identity remains present.
-5. Start Homebridge and inspect the migration logs before changing anything in Apple Home.
-
-An exact host script should be based on the actual plugin prefix and whether this instance uses a child bridge. This repository-creation step does not run that replacement or change a live Homebridge installation. Your development checkout can safely exist alongside the old checkout; only the running Homebridge plugin installation must avoid loading both packages.
-
-## Validation on the real receiver
-
-- Confirm the existing tiles, rooms, and external Power/Input television accessories are still paired.
-- Run existing scenes and automations, including volume, mute, input and ALM controls.
-- Test None selection, receiver power-on readiness, and settings in day/night themes.
-- Restart once more and verify that no duplicate accessories appear and no re-pairing is requested.
-- If this uses a child bridge, verify that its original username, cache, pairing data and process assignment were preserved.
-
-If accessories appear as new or unpaired, stop and inspect the backup and identity comparison before deleting anything in Home. Restoring Homebridge data cannot necessarily repair scene references after an accessory has been removed from Apple's Home database.
-
-## Remaining limits
-
-Matching platform names is one part of migration, not a guarantee. Old and new packages registering the same platform can be ambiguous; removing cached/persistent data breaks continuity; moving to a different bridge changes identity. Our owner-reported receiver testing covers the predecessor's MRX 540 8K behavior, not yet the Plus package replacement. Other model/firmware combinations and child-bridge migration need their own checks.
-
-Sources: [Homebridge 1.8.5 cache restoration](https://github.com/homebridge/homebridge/blob/v1.8.5/src/bridgeService.ts), [Homebridge 2.0.0 cache restoration](https://github.com/homebridge/homebridge/blob/v2.0.0/src/bridgeService.ts).
-
+Automated migration checks also cover main-bridge and child-bridge identity preservation. They complement the maintainer's successful live migration; they do not guarantee every older plugin version or custom setup.

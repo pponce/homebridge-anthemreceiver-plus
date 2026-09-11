@@ -11,20 +11,20 @@ First stable release of the independent `homebridge-anthemreceiver-plus` project
 
 ## Installation
 
-For a new installation with the Homebridge APT wrapper, after npm publication:
+For a new installation with the Homebridge APT wrapper:
 
 ```bash
-sudo hb-service stop &&
-sudo hb-service add homebridge-anthemreceiver-plus &&
+sudo hb-service stop
+sudo hb-service add homebridge-anthemreceiver-plus
 sudo hb-service start
 ```
 
-The npm package includes compiled `dist` and the custom settings UI. GitHub installation is also supported; see the [README](https://github.com/pponce/homebridge-anthemreceiver-plus#installing-or-updating).
+You can also install or update **homebridge-anthemreceiver-plus** through Homebridge UI. See the [README](https://github.com/pponce/homebridge-anthemreceiver-plus#installing-or-updating).
 
 ## Migration and validation limits
 
-Existing users must follow [MIGRATION.md](https://github.com/pponce/homebridge-anthemreceiver-plus/blob/main/MIGRATION.md) before replacing the old package. Do not load both packages for the same receiver or reset the existing bridge, accessory cache, or pairing data.
+Existing users can follow [MIGRATION.md](https://github.com/pponce/homebridge-anthemreceiver-plus/blob/main/MIGRATION.md) before replacing the old package. Do not load both packages for the same receiver or reset the existing bridge, accessory cache, or pairing data.
 
-The owner reported successful predecessor testing on an MRX 540 8K. Automated tests cover package-rename cache reassociation, HAP identifiers, and synthetic pairing records. Live Plus migration with existing Apple Home scenes/automations and child bridges remains to be validated; the stable version label does not expand that test coverage.
+The owner reported successful receiver testing on an MRX 540 8K and a successful migration to Plus without changing existing scenes or automations. Automated tests cover main-bridge and child-bridge package replacement, including cache reassociation, HAP identifiers, and synthetic pairing records. Other models and custom setups may differ.
 
 Not yet Homebridge verified. STR preamplifier support is not included. See [ACKNOWLEDGEMENTS.md](https://github.com/pponce/homebridge-anthemreceiver-plus/blob/main/ACKNOWLEDGEMENTS.md) for project origins.
