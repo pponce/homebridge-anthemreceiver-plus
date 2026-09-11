@@ -4,7 +4,7 @@
 
 # homebridge-anthemreceiver-plus
 
-**Independent successor maintained by Pedro Ponce de Leon.** This project retains the `AnthemReceiver` platform name and existing accessory identifiers to support migration from `homebridge-anthemreceiver`. It is not yet verified by Homebridge. See [migration guidance](MIGRATION.md) before replacing an existing installation, and [project origins](ACKNOWLEDGEMENTS.md) for upstream credit.
+This project retains the `AnthemReceiver` platform name and existing accessory identifiers to support migration from `homebridge-anthemreceiver`. See [migration guidance](MIGRATION.md) before replacing an existing installation, and [project origins](ACKNOWLEDGEMENTS.md) for upstream credit.
 
 **Available on npm:** install **homebridge-anthemreceiver-plus** from Homebridge UI. See [GitHub Releases](https://github.com/pponce/homebridge-anthemreceiver-plus/releases) for version-specific release notes.
 
