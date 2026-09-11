@@ -31,8 +31,13 @@
     "prepack": "npm run build"
   },
   "keywords": [
-    "homebridge-plugin",
-    "supports-hap"
+      "homebridge-plugin",
+      "supports-hap",
+      "anthem",
+      "receiver",
+      "homekit",
+      "mrx",
+      "avm"
   ],
   "dependencies": {
     "@homebridge/plugin-ui-utils": "^2.2.6"
