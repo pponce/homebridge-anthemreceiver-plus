@@ -1,6 +1,6 @@
 # Migrating to Anthem Receiver Plus
 
-If you already use `homebridge-anthemreceiver` and keep the default `"platform": "AnthemReceiver"` in your existing configuration, replacing the package should preserve your accessories, pairings, scenes, and automations.
+If you already use `homebridge-anthemreceiver` and keep the default `"platform": "AnthemReceiver"` in your existing configuration, replacing the package should preserve your accessories, pairings, scenes, and automations. Do not remove any TV accessory bridge that was created by the older homebridge-anthemreceiver plugin. Do not remove the child bridge for the older plugin either. 
 
 The maintainer completed this migration successfully and reported that no changes to existing scenes or automations were needed. Other setups can differ, so **download a full backup from Homebridge UI before starting**.
 
@@ -23,7 +23,7 @@ After startup, check the existing accessories and run a few scenes and automatio
 
 ## A few notes
 
-- Keep the exact platform name `AnthemReceiver`, including the final **r**, and retain any existing `_bridge` settings. Do not add a second platform block for Plus.
+- Keep the exact platform name `AnthemReceiver`, and retain any existing `_bridge` settings. Do not add a second platform block for Plus in the homebridge conf.
 - Run only the new plugin after migration; both packages register the same platform.
 - If you explicitly qualified the platform with the old package name or use a `plugins` allowlist, update that package reference to Plus while keeping your existing bridge settings.
 - These commands are for the Homebridge APT installation. Other installation methods need the equivalent package replacement while retaining configuration and pairing data.
