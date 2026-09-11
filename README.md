@@ -4,11 +4,12 @@
 
 # homebridge-anthemreceiver-plus
 
+Control your Anthem receiver from Apple Home and the Apple TV Remote on your iPhone. Choose the controls you want for each supported zone, including power, volume, mute, and input selection.
+
 This project retains the `AnthemReceiver` platform name and existing accessory identifiers to support migration from `homebridge-anthemreceiver`. See [migration guidance](MIGRATION.md) before replacing an existing installation, and [project origins](ACKNOWLEDGEMENTS.md) for upstream credit.
 
 **Available on npm:** install **homebridge-anthemreceiver-plus** from Homebridge UI. See [GitHub Releases](https://github.com/pponce/homebridge-anthemreceiver-plus/releases) for version-specific release notes.
 
-Control your Anthem receiver from Apple Home and the Apple TV Remote on your iPhone. Choose the controls you want for each supported zone, including power, volume, mute, and input selection.
 
 ## Highlights
 
