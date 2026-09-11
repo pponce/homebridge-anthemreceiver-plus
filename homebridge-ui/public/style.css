@@ -88,3 +88,9 @@
 :is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is(a:not(.btn), code) { color: #9dccff; }
 :is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is([aria-invalid=true], .is-invalid) { border-color: #ffb4ab; }
 :is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :focus-visible { outline: 2px solid #f2c17b; outline-offset: 3px; }
+
+
+.anthem-diagnostics { margin-top: 1rem; }
+.anthem-diagnostic-report { max-height: 24rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: .5rem; font-size: .8rem; }
+
+.anthem-field select { width: 100%; min-width: 0; }

@@ -35,6 +35,12 @@ async function pageFor(t, config, viewport = { width: 1100, height: 1100 }) {
           await new Promise(resolve => setTimeout(resolve, value.Host === 'slow' ? 150 : 5));
           return value.Host && value.Host !== 'invalid' ? { valid: true } : { valid: false, error: 'Invalid host' };
         }
+        if (route === '/diagnostics') return { ok: true, report: {
+          schemaVersion: 1, connection: 'connected', finishReason: 'finished', model: 'Future Anthem', firmware: '2',
+          recognizedModel: false, startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
+          environment: { plugin: '1.0.0', node: 'v22.0.0' }, notes: [], unsolicitedReplies: ['<script>private</script>'],
+          queries: [{ command: 'GSN?', outcome: 'answered', elapsedMs: 5, receivedBytes: 10, replies: ['GSNPRIVATE123'], responseHex: 'abc123' }],
+        } };
         if (route === '/test-connection') return { ok: true, receiver: {
           model: 'MRX SLM', firmware: '1.0.0', serial: 'TEST', checkedAt: new Date().toISOString(), complete: true,
           capabilities: { model: 'MRX SLM', zones: 1, brightness: true, volume: true, dolby: true, directListeningMode: true },
@@ -96,4 +102,34 @@ test('Homebridge night and light themes keep settings and form controls readable
   await page.getByRole('button', { name: 'Test connection', exact: true }).click();
   await page.waitForFunction(() => document.getElementById('field-Zone2-Active').disabled);
   await require('./theme-fixture.cjs').checkThemeContrast(page, '.anthem-settings');
+});
+
+
+test('advanced diagnostics preserve configuration and export the exact privacy-controlled preview', async t => {
+  const page = await pageFor(t, [{ platform: 'AnthemReceiver', Host: 'receiver', Zone2: { Active: true } }], { width: 390, height: 1000 });
+  await page.waitForFunction(() => saveEnabled);
+  const before = await page.evaluate(() => structuredClone(staged));
+  await page.locator('#diagnostics summary').click();
+  await page.getByLabel('Model printed on the device (optional)').fill('Future stereo');
+  await page.getByLabel('Device power state during this test').selectOption('on');
+  await page.getByRole('button', { name: 'Run diagnostics', exact: true }).click();
+  const preview = page.getByLabel('Diagnostic report preview');
+  await preview.waitFor();
+  assert.ok(!(await preview.textContent()).includes('PRIVATE123'));
+  assert.ok(!(await preview.textContent()).includes('abc123'));
+  assert.equal(await page.locator('#field-Zone2-Active').isDisabled(), false);
+  assert.deepEqual(await page.evaluate(() => staged), before);
+  assert.equal(await page.evaluate(() => calls.find(call => call.route === '/diagnostics').value.includeZone2), false);
+  await page.getByLabel('Include raw replies and device identifiers').check();
+  assert.ok((await preview.textContent()).includes('PRIVATE123'));
+  assert.equal(await page.locator('#diagnostic-results script').count(), 0);
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download report', exact: true }).click();
+  const download = await downloadPromise;
+  assert.equal(download.suggestedFilename(), 'anthem-diagnostics.json');
+  assert.equal(fs.readFileSync(await download.path(), 'utf8'), await preview.textContent() + '\n');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await require('./theme-fixture.cjs').checkThemeContrast(page, '.anthem-settings');
+  await page.getByLabel('Receiver IP address or hostname').fill('other-device');
+  assert.equal(await page.locator('#diagnostic-results').textContent(), '');
 });

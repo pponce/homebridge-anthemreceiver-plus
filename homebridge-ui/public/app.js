@@ -1,4 +1,4 @@
-/* global homebridge, AnthemConfig */
+/* global homebridge, AnthemConfig, AnthemDiagnosticReport */
 'use strict';
 const hb = homebridge;
 const message = document.getElementById('message');
@@ -22,7 +22,7 @@ function set(path, value) {
 }
 function changed(path) {
   revision++; hb.disableSaveButton();
-  if (path === 'Host' || path === 'Port') { support = undefined; applyCapabilities(); document.getElementById('preview').replaceChildren(); }
+  if (path === 'Host' || path === 'Port') { document.getElementById('diagnostic-results').replaceChildren(); support = undefined; applyCapabilities(); document.getElementById('preview').replaceChildren(); }
   clearTimeout(timer); timer = setTimeout(sync, 180);
 }
 async function sync() {
@@ -89,7 +89,7 @@ function table(headers, rows, captionText) {
 async function testConnection() {
   if (testing) return;
   const preview = document.getElementById('preview');
-  testing = true; document.getElementById('test').disabled = true; document.getElementById('cancel').hidden = false;
+  testing = true; document.getElementById('run-diagnostics').disabled = true; document.getElementById('test').disabled = true; document.getElementById('cancel').hidden = false;
   const testedRevision = revision;
   preview.replaceChildren(node('p', 'Connecting to the receiver…', 'alert alert-info'));
   try {
@@ -111,8 +111,61 @@ async function testConnection() {
       preview.append(details);
     }
   } catch { preview.replaceChildren(node('p', 'Could not complete the connection test. Check the address and try again.', 'alert alert-danger')); }
-  finally { testing = false; document.getElementById('test').disabled = false; document.getElementById('cancel').hidden = true; }
+  finally { testing = false; document.getElementById('run-diagnostics').disabled = false; document.getElementById('test').disabled = false; document.getElementById('cancel').hidden = true; }
 }
+async function runDiagnostics() {
+  if (testing) return;
+  const output = document.getElementById('diagnostic-results');
+  output.className = 'anthem-preview';
+  const testedRevision = revision;
+  const testedConfig = clone(config);
+  const context = { reportedModel: document.getElementById('diagnostic-model').value,
+    powerState: document.getElementById('diagnostic-power').value };
+  testing = true;
+  document.getElementById('test').disabled = true;
+  document.getElementById('run-diagnostics').disabled = true;
+  document.getElementById('cancel').hidden = false;
+  output.replaceChildren(node('p', 'Reading diagnostic replies… You can cancel and keep partial results.', 'alert alert-info'));
+  try {
+    const result = await hb.request('/diagnostics', { config: testedConfig, includeZone2: document.getElementById('diagnostic-zone2').checked });
+    output.replaceChildren();
+    if (testedRevision !== revision) {
+      output.append(node('p', 'Settings changed during diagnostics. Run again to collect a report for the current settings.', 'alert alert-warning')); return;
+    }
+    if (!result.ok) { output.append(node('p', result.error || 'Diagnostics could not start.', 'alert alert-danger')); return; }
+    const report = result.report;
+    output.append(node('p', report.connection === 'connected' ? 'TCP connection established.' : 'TCP connection was not established.', 'alert alert-info'));
+    output.append(node('p', `${report.model || 'No model identified'} · ${report.recognizedModel ? 'Recognized by this plugin' : 'Not recognized by this plugin'}. Diagnostic replies do not confirm control or HomeKit compatibility.`));
+    output.append(node('p', `Run ended: ${report.finishReason}. ${report.queries.filter(query => query.outcome === 'answered').length} of ${report.queries.length} attempted queries answered.`));
+    output.append(table(['Query', 'Outcome', 'Time (ms)'], report.queries.map(query => [query.command, query.outcome, query.elapsedMs]), 'Read-only diagnostic results'));
+    const privacy = document.createElement('input'); privacy.type = 'checkbox'; privacy.className = 'form-check-input'; privacy.id = 'diagnostic-private';
+    const privacyLabel = node('label', undefined, 'anthem-toggle'); privacyLabel.append(privacy, document.createTextNode(' Include raw replies and device identifiers'));
+    output.append(privacyLabel, node('p', 'The report below is exactly what will be copied or downloaded. Review it before attaching it to an issue. Raw replies can contain serial numbers, input names, and other device information.', 'anthem-help'));
+    const preview = node('pre', '', 'anthem-diagnostic-report'); preview.tabIndex = 0; preview.setAttribute('aria-label', 'Diagnostic report preview');
+    const refresh = () => { preview.textContent = JSON.stringify(AnthemDiagnosticReport.build(report, context, privacy.checked, testedConfig.Host), null, 2); };
+    privacy.addEventListener('change', refresh); refresh(); output.append(preview);
+    const actions = node('div', undefined, 'anthem-actions');
+    const copy = node('button', 'Copy report', 'btn btn-outline-primary'); copy.type = 'button';
+    const download = node('button', 'Download report', 'btn btn-outline-secondary'); download.type = 'button';
+    const status = node('p', '', 'anthem-help'); status.setAttribute('role', 'status');
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(preview.textContent); status.textContent = 'Report copied.'; }
+      catch { status.textContent = 'Clipboard is unavailable here. Use Download report or select the report text to copy it.'; }
+    });
+    download.addEventListener('click', () => {
+      const url = URL.createObjectURL(new Blob([preview.textContent + '\n'], { type: 'application/json' }));
+      const link = document.createElement('a'); link.href = url; link.download = 'anthem-diagnostics.json';
+      document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status.textContent = 'Report downloaded. Review it before sharing.';
+    });
+    actions.append(copy, download); output.append(actions, status);
+  } catch { output.replaceChildren(node('p', 'Could not complete diagnostics. Check the address and try again.', 'alert alert-danger')); }
+  finally {
+    testing = false; document.getElementById('test').disabled = false;
+    document.getElementById('run-diagnostics').disabled = false; document.getElementById('cancel').hidden = true;
+  }
+}
+
 async function initialize() {
   hb.disableSaveButton();
   try {
@@ -144,9 +197,11 @@ async function initialize() {
     field(document.getElementById('display'), 'MaxVolumeDB', 'Maximum volume (dB)', { number: true, min: -89.5, max: 10, step: '0.5', help: 'Optional. Match the maximum set on your receiver. Maps HomeKit 1–100% to this dB range; 0% mutes. Leave blank for receiver percentage control.' });
     form.hidden = false; applyCapabilities();
     document.getElementById('test').addEventListener('click', testConnection);
+    document.getElementById('run-diagnostics').addEventListener('click', runDiagnostics);
     document.getElementById('cancel').addEventListener('click', () => { void hb.request('/cancel-test').catch(() => {}); });
     form.addEventListener('submit', event => event.preventDefault());
     await sync();
   } catch (error) { feedback(error instanceof Error ? error.message : 'Could not load settings.', 'danger'); }
 }
 void initialize();
+

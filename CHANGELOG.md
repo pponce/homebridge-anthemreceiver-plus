@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add generic advanced diagnostics to the configuration UI for recognized and unknown Anthem hardware, without changing runtime model support. Collect bounded read-only query outcomes, partial results, and optional raw reply/hex evidence.
+- Add report preview, copy/download actions, default privacy filtering, optional Zone 2 probing, and shared test cancellation/concurrency/cooldown safeguards.
+
 - Upgrade the build compiler to TypeScript 7.0.2 or compatible 7.x updates. Resolve its CLI through the exported package manifest so builds and direct GitHub installations work with TypeScript 7's package exports.
 - Remove the unused `ts-node` development dependency; development watching already builds JavaScript before starting Homebridge.
 
@@ -22,3 +25,4 @@
 - Add a stable-release script checking npm account klidec, exact-commit CI, built package integrity, npm latest, and the matching GitHub release.
 
 The standalone repository's initial five CI jobs passed, including browser/night-theme, migration, archive and GitHub-install checks. The 1.0.0 release script requires passing CI for the exact release commit. Owner testing covers the predecessor on an MRX 540 8K; live Plus migration and child-bridge scene preservation remain to be validated. See IMPROVEMENT_PLAN.md for validation history.
+

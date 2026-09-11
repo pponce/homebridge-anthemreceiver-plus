@@ -15,6 +15,7 @@ This project retains the `AnthemReceiver` platform name and existing accessory i
 
 - **A volume slider that fits your listening range.** Set **Maximum volume (dB)** to match the limit on your receiver. The Home app's full slider then spans your usable range, with 100% representing your chosen maximum. [See how volume control works](#volume-control-in-apple-home).
 - **Modern settings configuration UI with day and night themes.** Grouped connection, zone, and display settings make setup easier, with inline validation and Homebridge's familiar Save button.
+- **Diagnostics for other Anthem hardware.** Collect a shareable, read-only report for recognized or unknown models without enabling unsupported controls.
 - **A read-only connection preview.** Check the receiver's model, firmware, inputs, and available zone status without changing playback or volume.
 - **More reliable everyday control.** Improved reply handling, automatic reconnection, and state refresh help HomeKit stay in sync. Supported commands wait for receiver confirmation and report communication failures.
 - **Stable accessory and input handling.** Corrected Zone 2 setup and input updates preserve existing accessory identities and reuse unchanged input services.
@@ -126,6 +127,20 @@ The custom settings page groups receiver connection details, Zone 1/Zone 2 acces
 - You can save valid settings while the receiver is offline. Opening, editing, or testing settings does not save them automatically: use Homebridge's **Save** button, then restart the relevant instance or child bridge.
 - Existing configuration keys and Homebridge metadata are preserved.
 
+### Advanced diagnostics and unknown Anthem models
+
+Open **Advanced diagnostics / Test unsupported device** in the connection section. Enter the device address and port, optionally enter the model printed on the device, choose its current power state, and select **Run diagnostics**. Use **Also query Zone 2** only when relevant. Start with the device powered on; repeat in standby if useful. No save or restart is needed to run the probe against the entered address.
+
+This separate diagnostic mode accepts replies from unknown Anthem models (including potential future STR or other hardware investigations). It does **not** add those models to the supported-device list, change playback/settings, create accessories, or prove that control commands work. Ordinary **Test connection** continues to use the existing supported-model check.
+
+The bounded probe sends only a fixed set of read-only queries already used by the plugin: model/firmware, both known serial and first-input-name formats, input count, and Zone 1 power/mute/volume/percentage/input status. Optional Zone 2 uses the same status queries. It samples the first input rather than enumerating the full device. Unknown models are not assigned an MRX/AVM protocol profile. Rejected alternative-format queries are expected on some devices; a timeout means no reply arrived, not that a feature is unsupported.
+
+Results show each query, its outcome, and elapsed time. Partial evidence is retained on cancellation, disconnection, or the 30-second overall limit. Queries are sequential and spaced; a query timeout closes the connection before the next probe so a late response cannot be attributed to a different command. This uses a separate TCP connection, so hardware that limits control sessions may require you to stop its plugin child bridge or other controller temporarily.
+
+Use **Copy report** or **Download report** to attach the previewed JSON to a support issue. The report includes plugin/Node/Homebridge versions where available, user-reported power state, detected identity, query outcomes, and reply evidence. By default serial numbers, input names, unsolicited/unrecognized contents, and raw byte samples are omitted; the configured address is redacted. **Include raw replies and device identifiers** explicitly adds raw reply text and bounded hex samples (useful for unfamiliar reply framing); review the preview before sharing. Homebridge configuration and pairing credentials are never included. Reports are not automatically sent anywhere.
+
+For a hardware-support request, include the exact model, firmware, on/standby test conditions, the diagnostic report, and a link to its control-protocol documentation if available. Read-only replies are evidence for investigation; power, input, mute, and volume control still require separate hardware validation before support can be claimed.
+
 ## Reliability and stability improvements
 
 The receiver communication and accessory handling have been updated to make everyday use more dependable:
@@ -194,3 +209,4 @@ See [CHANGELOG.md](CHANGELOG.md) and [GitHub Releases](https://github.com/pponce
 - **Listening modes:** direct listening-mode switches, including **None**, require a protocol V02 model. Select None by turning its switch on; turning all mode switches off is not how to select it. Older receivers retain Apple Remote listening-mode cycling.
 - **Standby connectivity:** keep Connected Standby enabled so the receiver can remain reachable when powered off.
 - **Connection preview:** this uses a separate read-only connection. Behavior on models that limit simultaneous control connections needs model-specific testing.
+

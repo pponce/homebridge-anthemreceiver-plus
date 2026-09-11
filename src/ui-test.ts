@@ -1,4 +1,5 @@
 import net = require('node:net');
+import { AnthemDiagnostics, DiagnosticReport } from './diagnostics';
 import { normalizeConfig } from './config';
 import { capabilities } from './capabilities';
 import { ResponseFramer, validateReply } from './protocol';
@@ -21,6 +22,17 @@ export class ConnectionTester {
   constructor(private readonly timeout = 8000, private readonly cooldown = 5000) {}
 
   stop(): void { this.cancel?.(); }
+
+  async diagnose(raw: unknown, includeZone2 = false): Promise<DiagnosticReport> {
+    if (this.cancel) throw new Error('A connection test is already running');
+    if (Date.now() - this.lastAttempt < this.cooldown) throw new Error('Wait five seconds before testing again');
+    normalizeConfig(raw);
+    this.lastAttempt = Date.now();
+    const diagnostics = new AnthemDiagnostics();
+    this.cancel = () => diagnostics.stop();
+    try { return await diagnostics.run(raw, includeZone2); }
+    finally { this.cancel = undefined; }
+  }
 
   test(raw: unknown): Promise<ReceiverPreview> {
     if(this.cancel) return Promise.reject(new Error('A connection test is already running'));
@@ -102,3 +114,4 @@ export class ConnectionTester {
     });
   }
 }
+
