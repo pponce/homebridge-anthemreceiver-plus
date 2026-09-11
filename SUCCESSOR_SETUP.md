@@ -1,12 +1,10 @@
 # Standalone project and stable release workflow
 
-The independent [pponce/homebridge-anthemreceiver-plus](https://github.com/pponce/homebridge-anthemreceiver-plus) repository is created with `main` as its default branch and the inherited history preserved. GitHub confirms it is not a fork. The previous repository and local checkout are retained; repository creation does not need to be run again.
+The independent [pponce/homebridge-anthemreceiver-plus](https://github.com/pponce/homebridge-anthemreceiver-plus) repository is created with `main` as its default branch and the inherited history preserved. The previous repository and local checkout are retained.
 
 The initial standalone [CI run 34622442946](https://github.com/pponce/homebridge-anthemreceiver-plus/actions/runs/34622442946) passed all five jobs at `3a9bba33b5c69384a7a4bb266794a9fae188da09`. This covers Node 22/24 × Homebridge 1/2, receiver and migration tests, browser themes, archive installation, and direct GitHub installation.
 
 ## Publish 1.0.0
-
-The owner chose to skip beta publication and publish the first Plus version as stable `1.0.0`. The npm publisher account is `klidec`; the GitHub owner is `pponce`. A release label does not establish additional hardware or Apple Home migration coverage.
 
 Use the development checkout, not the running Homebridge plugin directory. Run without sudo:
 
@@ -39,8 +37,7 @@ The script does not modify your running Homebridge installation or submit a Home
 
 Read [MIGRATION.md](MIGRATION.md) before replacing the old installed package. Preserve configuration, bridge/child-bridge identity, cache, and pairing data. Do not install both packages together for the same receiver.
 
-The predecessor was tested by the owner on an MRX 540 8K. The renamed Plus package still needs real installation, scene/automation, and child-bridge migration validation. Record those results before claiming hardware-verified migration.
+The predecessor was tested by the owner on an MRX 540 8K. 
 
 Use [VERIFICATION_PREPARATION.md](VERIFICATION_PREPARATION.md) for the later Homebridge request and recheck its current requirements. The new package is not yet Homebridge verified; no request has been sent.
 
-Dependency lockfile adoption and broader hardware coverage remain follow-up work. Current CI and publication use the same unlocked dependency installation approach inherited from the tested predecessor.
