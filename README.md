@@ -19,7 +19,7 @@ This project retains the `AnthemReceiver` platform name and existing accessory i
 - **A read-only connection preview.** Check the receiver's model, firmware, inputs, and available zone status without changing playback or volume.
 - **More reliable everyday control.** Improved reply handling, automatic reconnection, and state refresh help HomeKit stay in sync. Supported commands wait for receiver confirmation and report communication failures.
 - **Stable accessory and input handling.** Corrected Zone 2 setup and input updates preserve existing accessory identities and reuse unchanged input services.
-- **Ability to select “None” for Anthem listening mode.** A dedicated **None** switch lets supported receivers return to listening mode None from Apple Home or a scene, while preserving existing listening-mode switch identifiers. There was no way to turn this off in the old plugin once an Listening mode was selected.
+- **Ability to select “None” for Anthem listening mode.** A dedicated **None** switch lets supported receivers return to listening mode None from Apple Home or a scene, while preserving existing listening-mode switch identifiers. There was no way to turn this off in the old plugin once a Listening mode was selected.
 
 ## Controls and supported models
 
