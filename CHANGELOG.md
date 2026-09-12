@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.2.1 — 2026-09-12
+
 - Move Homebridge from peer dependencies to development dependencies so npm does not install a second Homebridge runtime with the plugin. Retain the existing Homebridge compatibility range.
 - Check package metadata for forbidden Homebridge/HAP-NodeJS runtime, peer and bundled dependencies before publication.
 

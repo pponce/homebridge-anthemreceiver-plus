@@ -1,7 +1,7 @@
 {
   "displayName": "Anthem Receiver Plus",
   "name": "homebridge-anthemreceiver-plus",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Maintained Anthem receiver integration with HomeKit volume mapping, confirmed controls, and a modern settings UI.",
   "author": "Pedro Ponce de Leon",
   "homepage": "https://github.com/pponce/homebridge-anthemreceiver-plus#readme",
