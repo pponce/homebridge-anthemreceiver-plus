@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Move Homebridge from peer dependencies to development dependencies so npm does not install a second Homebridge runtime with the plugin. Retain the existing Homebridge compatibility range.
+- Check package metadata for forbidden Homebridge/HAP-NodeJS runtime, peer and bundled dependencies before publication.
+
 ## 1.2.0 — 2026-09-12
 
 - Add experimental, separate STR PA/IA profiles for one-zone power, mute, normal inputs, dB volume and the four STR listening modes. Physical-device validation is pending.

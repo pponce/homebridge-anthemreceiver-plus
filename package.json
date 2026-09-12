@@ -42,14 +42,12 @@
   "dependencies": {
     "@homebridge/plugin-ui-utils": "^2.2.6"
   },
-  "peerDependencies": {
-    "homebridge": "^1.8.0 || ^2.0.0"
-  },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "nodemon": "^3.1.9",
     "typescript": "^7.0.2",
-    "playwright": "^1.56.1"
+    "playwright": "^1.56.1",
+    "homebridge": "^1.8.0 || ^2.0.0"
   },
   "files": [
     "dist",
