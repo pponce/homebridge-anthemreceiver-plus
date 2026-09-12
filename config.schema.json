@@ -128,7 +128,7 @@
         "required": false,
         "minimum": -89.5,
         "maximum": 10,
-        "description": "Optional HomeKit volume mapping max dB configured on the Anthem. When set, HomeKit volume 1-100% maps to -89.5dB to this value, and 0% sends mute."
+        "description": "Optional maximum dB configured on the Anthem. Receiver mapping starts at -89.5 dB. STR always maps from -96 dB to this maximum, capped at +7 dB (+7 when blank), and applies the cap to volume buttons. 0% mutes."
       }
     }
   },

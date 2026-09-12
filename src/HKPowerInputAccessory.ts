@@ -73,7 +73,7 @@ export class HKPowerInputAccessory {
       input.setCharacteristic(this.platform.Characteristic.Identifier, i + 1)
         .setCharacteristic(this.platform.Characteristic.ConfiguredName, InputArray[i] || 'Input ' + (i + 1))
         .setCharacteristic(this.platform.Characteristic.IsConfigured, this.platform.Characteristic.IsConfigured.CONFIGURED)
-        .setCharacteristic(this.platform.Characteristic.InputSourceType, this.platform.Characteristic.InputSourceType.HDMI);
+        .setCharacteristic(this.platform.Characteristic.InputSourceType, (this.Controller.IsSTR() ? this.platform.Characteristic.InputSourceType.OTHER : this.platform.Characteristic.InputSourceType.HDMI));
       this.TVService.addLinkedService(input);
       next.push(input);
     }

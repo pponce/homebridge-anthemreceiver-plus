@@ -15,8 +15,8 @@ This project retains the `AnthemReceiver` platform name and existing accessory i
 
 - **A volume slider that fits your listening range.** Set **Maximum volume (dB)** to match the limit on your receiver. The Home app's full slider then spans your usable range, with 100% representing your chosen maximum. [See how volume control works](#volume-control-in-apple-home).
 - **Modern settings configuration UI with day and night themes.** Grouped connection, zone, and display settings make setup easier, with inline validation and Homebridge's familiar Save button.
-- **Diagnostics for other Anthem hardware.** Collect a shareable, read-only report for recognized or unknown models without enabling unsupported controls.
-- **A read-only connection preview.** Check the receiver's model, firmware, inputs, and available zone status without changing playback or volume.
+- **Diagnostics for other Anthem hardware.** Collect a shareable query report for recognized or unknown models without enabling unsupported controls.
+- **A read-only connection preview.** Check the receiver's model, firmware, inputs, and available zone status using selected status queries.
 - **More reliable everyday control.** Improved reply handling, automatic reconnection, and state refresh help HomeKit stay in sync. Supported commands wait for receiver confirmation and report communication failures.
 - **Stable accessory and input handling.** Corrected Zone 2 setup and input updates preserve existing accessory identities and reuse unchanged input services.
 - **Ability to select “None” for Anthem listening mode.** A dedicated **None** switch lets supported receivers return to listening mode None from Apple Home or a scene, while preserving existing listening-mode switch identifiers. There was no way to turn this off in the old plugin once a Listening mode was selected.
@@ -37,6 +37,7 @@ Supported receiver families:
 - MRX 520, MRX 720, MRX 1120
 - MRX 540, MRX 740, MRX 1140
 - MRX SLM (single zone)
+- **Experimental:** STR Preamplifier (`STR PA`) and STR Integrated Amplifier (`STR IA`), single zone. Power, mute, normal inputs, dB volume and four STR listening modes are implemented; physical-device validation is pending. See [STR testing and diagnostic reports](STR_TESTING.md). ARC, brightness, menu navigation and Home Theatre Bypass selection are not enabled for STR.
 
 The owner has reported successful testing of these changes on an **MRX 540 8K**. This is not a claim of hardware testing across every supported model.
 
@@ -48,8 +49,8 @@ Homebridge 1.8 and 2.x on Node.js 22 or 24 are supported. Automated checks cover
 
 1. Install Homebridge and Homebridge UI.
 2. Install **homebridge-anthemreceiver-plus** from Homebridge UI, or use the [npm commands below](#installing-or-updating). If you use the old plugin, follow [Migrating from the original plugin](#migrating-from-the-original-plugin) first.
-3. Enable **Connected Standby** on the receiver. On supported models, this is in the receiver's web UI under **System Setup → General → General Settings**.
-4. Open the plugin's settings in Homebridge UI, enter the receiver address, and enable the accessories you want.
+3. For STR, enable network control as described in the STR manual. For receivers, enable **Connected Standby** on the receiver. On supported models, this is in the receiver's web UI under **System Setup → General → General Settings**.
+4. In Homebridge UI, open **Plugins**, find the **Anthem Receiver Plus** tile, click its **vertical three dots (⋮)**, and choose **Plugin Config**. Enter the receiver address, and enable the accessories you want.
 5. Optionally set **Maximum volume (dB)** to match your receiver's maximum volume setting.
 6. Save and restart the relevant Homebridge instance or child bridge.
 
@@ -59,7 +60,7 @@ Enabled standalone controls appear through Homebridge. Combined **Power/Input** 
 
 Pair each enabled zone's Power/Input accessory once to make it available in Apple Home and the Apple TV Remote in Control Center.
 
-1. Enable **Power/Input** for the zone in the plugin settings, save, and restart Homebridge.
+1. Enable **Power/Input** for the zone in **Plugin Config** (plugin tile → **⋮** → **Plugin Config**), save, and restart Homebridge.
 2. Open the **Home** app on your iPhone.
 3. Tap **+ → Add Accessory → More Options**.
 4. Select the zone's Power/Input television accessory, such as **Zone1** or **Zone2**.
@@ -80,6 +81,8 @@ Open the **Apple TV Remote** in your iPhone's Control Center and select the pair
 | Back | Cycle listening mode in the main zone |
 | Info | Show or hide the main-zone menu |
 | Center | Select a main-zone menu option |
+
+On STR, use the input selector for normal inputs. Menu/navigation keys are not enabled. Back cycles the four STR listening modes; there is no STR None mode.
 
 ## Volume control in Apple Home
 
@@ -104,7 +107,9 @@ Values from 1–100% map linearly in dB, rounded to the receiver's 0.5 dB steps.
 
 **Set the maximum on the receiver itself, then enter the same value in the plugin.** The plugin setting controls slider mapping; it does not change the Anthem's own maximum-volume setting or limit other remotes. One plugin value is shared by both zones, so check your zone limits if you use Zone 2.
 
-Leave **Maximum volume (dB)** blank to retain the receiver's native percentage control (`PVOL`). In JSON, the setting is named `MaxVolumeDB`; for example, this configuration enables the Zone 1 volume accessory:
+**STR exception:** volume always uses dB commands, with 1% = −96 dB and 100% = the configured cap (at most +7 dB; +7 dB when blank). 0% mutes. STR up/down buttons move by 0.5 dB and also honor this cap. The receiver-family mapping example above remains unchanged.
+
+On supported receiver models, leave **Maximum volume (dB)** blank to retain the receiver's native percentage control (`PVOL`). In JSON, the setting is named `MaxVolumeDB`; for example, this configuration enables the Zone 1 volume accessory:
 
 ```json
 {
@@ -120,7 +125,7 @@ Leave **Maximum volume (dB)** blank to retain the receiver's native percentage c
 
 ## Configuration UI
 
-The custom settings page groups receiver connection details, Zone 1/Zone 2 accessories, display and volume settings, and iPhone pairing help. Day and night themes include contrasting text, fields, help text, buttons, and borders.
+Open **Plugins → Anthem Receiver Plus tile → ⋮ → Plugin Config**. This page groups receiver connection details, Zone 1/Zone 2 accessories, display and volume settings, and iPhone pairing help. Day and night themes include contrasting text, fields, help text, buttons, and borders.
 
 - **Test connection** reads model, firmware, inputs, and available zone status using the address currently entered. It does not send power, volume, mute, input-change, or remote-key commands.
 - The preview is timestamped. Missing status is shown as unknown rather than Off, and model-specific options account for restrictions such as the SLM's single zone.
@@ -129,17 +134,19 @@ The custom settings page groups receiver connection details, Zone 1/Zone 2 acces
 
 ### Advanced diagnostics and unknown Anthem models
 
-Open **Advanced diagnostics / Test unsupported device** in the connection section. Enter the device address and port, optionally enter the model printed on the device, choose its current power state, and select **Run diagnostics**. Use **Also query Zone 2** only when relevant. Start with the device powered on; repeat in standby if useful. No save or restart is needed to run the probe against the entered address.
+Open **Plugins → Anthem Receiver Plus tile → ⋮ → Plugin Config**, then expand **Advanced diagnostics / Test unsupported device** in the connection section. Enter the device address and port, optionally enter the model printed on the device, choose its current power state, and select **Run diagnostics**. Use **Also query Zone 2** only when relevant. Start with the device powered on; repeat in standby if useful. No save or restart is needed to run the probe against the entered address.
 
-This separate diagnostic mode accepts replies from unknown Anthem models (including potential future STR or other hardware investigations). It does **not** add those models to the supported-device list, change playback/settings, create accessories, or prove that control commands work. Ordinary **Test connection** continues to use the existing supported-model check.
+This separate diagnostic mode accepts replies from unknown Anthem models (including investigations of additional hardware). It does **not** add those models to the supported-device list, create accessories, or prove that control commands work. Ordinary **Test connection** continues to use the existing supported-model check.
 
-The bounded probe sends only a fixed set of read-only queries already used by the plugin: model/firmware, both known serial and first-input-name formats, input count, and Zone 1 power/mute/volume/percentage/input status. Optional Zone 2 uses the same status queries. It samples the first input rather than enumerating the full device. Unknown models are not assigned an MRX/AVM protocol profile. Rejected alternative-format queries are expected on some devices; a timeout means no reply arrived, not that a feature is unsupported.
+The bounded probe selects queries after model identification. Receiver discovery samples model/firmware, serial and MAC identity formats, first-input naming formats, input count, and Zone 1 power/mute/volume/percentage/input status; optional Zone 2 uses the same status queries. Recognized STR models use a restricted ten-query profile with MAC identity, older input names, dB volume and listening mode; no Zone 2 or percentage-volume query is sent. It samples input 1 rather than enumerating the full device. Rejected alternative formats and timeouts do not alone prove lack of support.
 
-Results show each query, its purpose, outcome, elapsed time, and explanation. A rejected older/newer query is labeled as an expected alternate-format rejection only when its counterpart answered successfully. Detected zone power, mute, volume, and input are shown separately from your optional power-state observation. Partial evidence is retained on cancellation, disconnection, or the 30-second overall limit. Queries are sequential and spaced; a query timeout closes the connection before the next probe so a late response cannot be attributed to a different command. This uses a separate TCP connection, so hardware that limits control sessions may require you to stop its plugin child bridge or other controller temporarily.
+A query suffix does not guarantee read-only behavior on every Anthem model. In particular, upstream STR testing reports that `Z1BRT?` can change balance; this plugin never sends that command. Do not expand the probe with guessed commands. See the [STR user testing guide](STR_TESTING.md) for paired reports, physical control checks and evidence needed to add more features.
 
-Use **Copy report** or **Download report** to attach the previewed JSON to a support issue. The report includes plugin/Node/Homebridge versions where available, user-reported power state, detected identity, query outcomes, and reply evidence. Schema version 2 adds a compact summary of attempted/answered/rejected queries and detected device state. `userContext.userReportedPowerState` is your optional dropdown selection (null when not specified); `summary.detectedState` comes from answered queries. Copy and download both contain the exact previewed JSON, including this summary and query explanations, so a second copy of the table is unnecessary. By default serial numbers, input names, unsolicited/unrecognized contents, and raw byte samples are omitted; the configured address is redacted. **Include raw replies and device identifiers** explicitly adds raw reply text and bounded hex samples (useful for unfamiliar reply framing); review the preview before sharing. Homebridge configuration and pairing credentials are never included. Reports are not automatically sent anywhere.
+Results show each query, its purpose, outcome, elapsed time, and explanation. A rejected older/newer query is labeled as an expected alternate-format rejection only when its counterpart answered successfully. Detected zone power, mute, volume, and input are shown separately from your optional power-state observation. Partial evidence is retained on cancellation, disconnection, or the 30-second overall limit. Queries are sequential and spaced; a query timeout closes the connection before the next probe so a late response cannot be attributed to a different command. For a first-time STR test, there is normally no Homebridge connection to stop. If this plugin is already configured for that same STR, pause its normal connection while running diagnostics: use its tile’s **⋮ → Stop Child Bridge**, or **Disable** and restart Homebridge if it has no child bridge. Leave Homebridge UI running. The [step-by-step STR guide](STR_TESTING.md) covers installation, reports, restarting control, and returning to the regular release.
 
-For a hardware-support request, include the exact model, firmware, on/standby test conditions, the diagnostic report, and a link to its control-protocol documentation if available. Read-only replies are evidence for investigation; power, input, mute, and volume control still require separate hardware validation before support can be claimed.
+Use **Copy report** or **Download report** to attach the previewed JSON to a support issue. The report includes plugin/Node/Homebridge versions where available, user-reported power state, detected identity, query outcomes, and reply evidence. Schema version 2 adds a compact summary of attempted/answered/rejected queries and detected device state. `userContext.userReportedPowerState` is your optional dropdown selection (null when not specified); `summary.detectedState` comes from answered queries. Copy and download both contain the exact previewed JSON, including this summary and query explanations, so a second copy of the table is unnecessary. By default serial numbers, MAC addresses, input names, unsolicited/unrecognized contents, and raw byte samples are omitted; the configured address is redacted. **Include raw replies and device identifiers** explicitly adds raw reply text and bounded hex samples (useful for unfamiliar reply framing); review the preview before sharing. Homebridge configuration and pairing credentials are never included. Reports are not automatically sent anywhere.
+
+For a hardware-support request, include the exact model, firmware, on/standby test conditions, the diagnostic report, and a link to its control-protocol documentation if available. Query replies are evidence for investigation; power, input, mute, and volume control still require separate hardware validation before support can be claimed.
 
 ## Reliability and stability improvements
 
@@ -193,7 +200,7 @@ sudo hb-service start
 
 This installs the latest stable version from npm. If installation fails, resolve the error before starting Homebridge. These terminal commands apply to the APT installation; use the installer appropriate to your setup on other systems.
 
-Open the plugin settings in Homebridge UI after a new installation. For normal Plus updates, keep your existing configuration and paired accessories. To inspect startup logs with the APT wrapper:
+After a new installation, open **Plugins → Anthem Receiver Plus tile → ⋮ → Plugin Config** in Homebridge UI. For normal Plus updates, keep your existing configuration and paired accessories. To inspect startup logs with the APT wrapper:
 
 ```bash
 sudo hb-service view

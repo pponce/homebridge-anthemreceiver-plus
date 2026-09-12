@@ -74,7 +74,7 @@ function applyCapabilities() {
     input.disabled = !!support && ((input.dataset.zone2 && support.zones === 1) || (input.dataset.capability && !support[input.dataset.capability]));
   }
   const note = document.getElementById('capability-note');
-  if (note) note.textContent = support ? `Detected ${support.model}. Unavailable controls are disabled; previously saved choices are preserved.` : 'Availability depends on your receiver model. Test the connection to preview supported controls.';
+  if (note) note.textContent = support ? `Detected ${support.model}${support.experimental ? ' (experimental; hardware validation pending)' : ''}. Unavailable controls are disabled; previously saved choices are preserved.` : 'Availability depends on your receiver model. Test the connection to preview supported controls.';
 }
 function table(headers, rows, captionText) {
   const output = node('table', undefined, 'table table-sm');
@@ -100,7 +100,7 @@ async function testConnection() {
     const receiver = result.receiver;
     support = receiver.capabilities; applyCapabilities();
     preview.className = 'anthem-preview';
-    preview.append(node('p', `${receiver.model} · Firmware ${receiver.firmware || 'Unknown'} · Serial ${receiver.serial || 'Unknown'}`));
+    preview.append(node('p', `${receiver.model} · Firmware ${receiver.firmware || 'Unknown'} · ${receiver.capabilities.protocol === 1 ? 'MAC' : 'Serial'} ${receiver.serial || 'Unknown'}`));
     preview.append(table(['Zone', 'Power', 'Mute', 'Volume', 'Input'], receiver.zones.map(zone => [zone.number,
       zone.power === null ? 'Unknown' : zone.power ? 'On' : 'Off', zone.mute === null ? 'Unknown' : zone.mute ? 'Muted' : 'Unmuted',
       zone.volume === null ? 'Unknown' : `${zone.volume} dB`, zone.input ?? 'Unknown']), `Receiver status checked ${new Date(receiver.checkedAt).toLocaleTimeString()}`));
@@ -135,22 +135,22 @@ async function runDiagnostics() {
     if (!result.ok) { output.append(node('p', result.error || 'Diagnostics could not start.', 'alert alert-danger')); return; }
     const report = result.report;
     output.append(node('p', report.connection === 'connected' ? 'TCP connection established.' : 'TCP connection was not established.', 'alert alert-info'));
-    output.append(node('p', `${report.model || 'No model identified'} · ${report.recognizedModel ? 'Recognized by this plugin' : 'Not recognized by this plugin'}. Diagnostic replies do not confirm control or HomeKit compatibility.`));
+    output.append(node('p', `${report.model || 'No model identified'} · ${report.experimental ? 'Experimental support; hardware validation pending' : report.recognizedModel ? 'Recognized by this plugin' : 'Not recognized by this plugin'}. Diagnostic replies do not confirm control or HomeKit compatibility.`));
     const summary = AnthemDiagnosticReport.summarize(report);
     output.append(node('p', `Run ended: ${report.finishReason}. ${summary.queries.answered} of ${summary.queries.attempted} attempted queries answered; ${summary.queries.expectedAlternativeRejections} expected alternate-format rejections.`));
     output.append(node('p', `Your observed power state: ${context.powerState === 'unknown' ? 'Not specified' : context.powerState}. Detected states below come from the device replies.`));
     const unknown = value => value === null ? 'Unknown' : value;
-    if (summary.detectedState.zones.length) output.append(table(['Zone', 'Power', 'Mute', 'Volume (dB)', 'Volume (%)', 'Input'],
+    if (summary.detectedState.zones.length) output.append(table(['Zone', 'Power', 'Mute', 'Volume (dB)', 'Volume (%)', 'Input', 'Listening mode'],
       summary.detectedState.zones.map(zone => [zone.zone, zone.power === null ? 'Unknown' : zone.power === 'on' ? 'On' : 'Off',
-        zone.muted === null ? 'Unknown' : zone.muted ? 'Muted' : 'Unmuted', unknown(zone.volumeDb), unknown(zone.volumePercent), unknown(zone.input)]), 'Detected device state'));
+        zone.muted === null ? 'Unknown' : zone.muted ? 'Muted' : 'Unmuted', unknown(zone.volumeDb), unknown(zone.volumePercent), unknown(zone.input), zone.listeningMode ?? 'Not queried']), 'Detected device state'));
     output.append(table(['Query', 'Outcome', 'Time (ms)', 'Meaning'], report.queries.map(query => {
       const detail = AnthemDiagnosticReport.explain(query, report.queries);
       return [query.command, detail.expectedAlternativeRejection ? 'Rejected (expected alternate format)' : query.outcome,
         query.elapsedMs, `${detail.purpose}: ${detail.explanation}`];
-    }), 'Read-only diagnostic results'));
+    }), 'Diagnostic query results'));
     const privacy = document.createElement('input'); privacy.type = 'checkbox'; privacy.className = 'form-check-input'; privacy.id = 'diagnostic-private';
     const privacyLabel = node('label', undefined, 'anthem-toggle'); privacyLabel.append(privacy, document.createTextNode(' Include raw replies and device identifiers'));
-    output.append(privacyLabel, node('p', 'The report below is exactly what will be copied or downloaded. Review it before attaching it to an issue. Raw replies can contain serial numbers, input names, and other device information.', 'anthem-help'));
+    output.append(privacyLabel, node('p', 'The report below is exactly what will be copied or downloaded. Review it before attaching it to an issue. Raw replies can contain serial numbers, MAC addresses, input names, and other device information.', 'anthem-help'));
     const preview = node('pre', '', 'anthem-diagnostic-report'); preview.tabIndex = 0; preview.setAttribute('aria-label', 'Diagnostic report preview');
     const refresh = () => { preview.textContent = JSON.stringify(AnthemDiagnosticReport.build(report, context, privacy.checked, testedConfig.Host), null, 2); };
     privacy.addEventListener('change', refresh); refresh(); output.append(preview);
@@ -197,14 +197,14 @@ async function initialize() {
       const advanced = node('details', undefined, 'anthem-options'); advanced.append(node('summary', 'Audio processing controls'));
       const audio = node('div', undefined, 'anthem-grid'); advanced.append(audio);
       if (number === 1) {
-        field(audio, `${key}.ARC`, 'Anthem Room Correction (ARC)', { boolean: true, help: 'Controls room correction for the active input, when ARC is configured on the receiver.' });
+        field(audio, `${key}.ARC`, 'Anthem Room Correction (ARC)', { boolean: true, capability: 'arc', help: 'Controls room correction for the active input, when ARC is configured on the receiver.' });
         field(audio, `${key}.ALM`, 'Listening-mode switches', { boolean: true, capability: 'directListeningMode', help: 'Older receivers can still cycle listening modes from Apple Remote.' });
       }
       field(audio, `${key}.DolbyPostProcessing`, 'Dolby audio processing', { boolean: true, capability: 'dolby' });
       card.append(advanced); zones.append(card);
     }
     field(document.getElementById('display'), 'PanelBrightness', 'Front-panel brightness control', { boolean: true, capability: 'brightness' });
-    field(document.getElementById('display'), 'MaxVolumeDB', 'Maximum volume (dB)', { number: true, min: -89.5, max: 10, step: '0.5', help: 'Optional. Match the maximum set on your receiver. Maps HomeKit 1–100% to this dB range; 0% mutes. Leave blank for receiver percentage control.' });
+    field(document.getElementById('display'), 'MaxVolumeDB', 'Maximum volume (dB)', { number: true, min: -89.5, max: 10, step: '0.5', help: 'Optional. Match the maximum set on your receiver. Maps HomeKit 1–100% to this dB range; 0% mutes. Leave blank for native receiver percentage control, or the STR dB range (−96 to +7 dB). STR also applies this maximum to up/down volume buttons.' });
     form.hidden = false; applyCapabilities();
     document.getElementById('test').addEventListener('click', testConnection);
     document.getElementById('run-diagnostics').addEventListener('click', runDiagnostics);

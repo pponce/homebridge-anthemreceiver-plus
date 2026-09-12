@@ -169,3 +169,23 @@ test('older protocol models do not gain direct ALM switches', async t => {
   const { platform } = await start(t, 'MRX 710');
   assert.equal(platform.CreatedAccessories.some(a => a.UUID.endsWith('ALM NG')), false);
 });
+
+for (const model of ['STR PA', 'STR IA']) test(`${model} publishes one zone, volume and four confirmed listening modes`, async t => {
+  const { api, platform, receiver } = await start(t, model, (_api, p) => {
+    p.config.Zone1.ARC = true; p.config.PanelBrightness = true; p.config.Zone1.DolbyPostProcessing = true;
+  });
+  assert.equal(api.external.length, 1);
+  assert.equal(platform.Controller.GetConfiguredZoneNumber(), 1);
+  assert.equal(platform.config.Zone2.Active, true);
+  assert.ok(api.registered.some(a => a.UUID.endsWith('Volume')));
+  assert.ok(!api.registered.some(a => /ARC|Brightness|Dolby/.test(a.UUID)));
+  const accessory = api.registered.find(a => a.UUID.endsWith('ALM NG'));
+  const switches = accessory.services.filter(s => s.UUID === api.hap.Service.Switch.UUID);
+  assert.deepEqual(switches.map(s => s.subtype), ['Stereo', 'Mono', 'Both Left', 'Both Right']);
+  await platform.Controller.RunCommand(() => platform.Controller.PowerZone(1, true));
+  const right = accessory.getServiceById(api.hap.Service.Switch, 'Both Right').getCharacteristic(api.hap.Characteristic.On);
+  await right.setter(true);
+  assert.equal(receiver.states.Z1ALM, 12);
+  assert.equal(right.value, true);
+  assert.deepEqual(receiver.rejected, []);
+});
