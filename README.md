@@ -20,6 +20,7 @@ This project retains the `AnthemReceiver` platform name and existing accessory i
 - **More reliable everyday control.** Improved reply handling, automatic reconnection, and state refresh help HomeKit stay in sync. Supported commands wait for receiver confirmation and report communication failures.
 - **Stable accessory and input handling.** Corrected Zone 2 setup and input updates preserve existing accessory identities and reuse unchanged input services.
 - **Ability to select “None” for Anthem listening mode.** A dedicated **None** switch lets supported receivers return to listening mode None from Apple Home or a scene, while preserving existing listening-mode switch identifiers. There was no way to turn this off in the old plugin once a Listening mode was selected.
+- **Experimental: STR Preamplifier support** Validation is pending. See [STR testing and diagnostic reports](STR_TESTING.md).
 
 ## Controls and supported models
 
@@ -38,8 +39,6 @@ Supported receiver families:
 - MRX 540, MRX 740, MRX 1140
 - MRX SLM (single zone)
 - **Experimental:** STR Preamplifier (`STR PA`) and STR Integrated Amplifier (`STR IA`), single zone. Power, mute, normal inputs, dB volume and four STR listening modes are implemented; physical-device validation is pending. See [STR testing and diagnostic reports](STR_TESTING.md). ARC, brightness, menu navigation and Home Theatre Bypass selection are not enabled for STR.
-
-The owner has reported successful testing of these changes on an **MRX 540 8K**. This is not a claim of hardware testing across every supported model.
 
 Homebridge 1.8 and 2.x on Node.js 22 or 24 are supported. Automated checks cover those combinations; see [package.json](package.json) for the declared engine ranges. The original plugin's broader, untested Node engine ranges are not carried into this new package.
 
