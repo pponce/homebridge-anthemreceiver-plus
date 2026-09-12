@@ -50,7 +50,7 @@ Homebridge 1.8 and 2.x on Node.js 22 or 24 are supported. Automated checks cover
 1. Install Homebridge and Homebridge UI.
 2. Install **homebridge-anthemreceiver-plus** from Homebridge UI, or use the [npm commands below](#installing-or-updating). If you use the old plugin, follow [Migrating from the original plugin](#migrating-from-the-original-plugin) first.
 3. For STR, enable network control as described in the STR manual. For receivers, enable **Connected Standby** on the receiver. On supported models, this is in the receiver's web UI under **System Setup → General → General Settings**.
-4. Open the plugin's settings in Homebridge UI, enter the receiver address, and enable the accessories you want.
+4. In Homebridge UI, open **Plugins**, find the **Anthem Receiver Plus** tile, click its **vertical three dots (⋮)**, and choose **Plugin Config**. Enter the receiver address, and enable the accessories you want.
 5. Optionally set **Maximum volume (dB)** to match your receiver's maximum volume setting.
 6. Save and restart the relevant Homebridge instance or child bridge.
 
@@ -60,7 +60,7 @@ Enabled standalone controls appear through Homebridge. Combined **Power/Input** 
 
 Pair each enabled zone's Power/Input accessory once to make it available in Apple Home and the Apple TV Remote in Control Center.
 
-1. Enable **Power/Input** for the zone in the plugin settings, save, and restart Homebridge.
+1. Enable **Power/Input** for the zone in **Plugin Config** (plugin tile → **⋮** → **Plugin Config**), save, and restart Homebridge.
 2. Open the **Home** app on your iPhone.
 3. Tap **+ → Add Accessory → More Options**.
 4. Select the zone's Power/Input television accessory, such as **Zone1** or **Zone2**.
@@ -125,7 +125,7 @@ On supported receiver models, leave **Maximum volume (dB)** blank to retain the 
 
 ## Configuration UI
 
-The custom settings page groups receiver connection details, Zone 1/Zone 2 accessories, display and volume settings, and iPhone pairing help. Day and night themes include contrasting text, fields, help text, buttons, and borders.
+Open **Plugins → Anthem Receiver Plus tile → ⋮ → Plugin Config**. This page groups receiver connection details, Zone 1/Zone 2 accessories, display and volume settings, and iPhone pairing help. Day and night themes include contrasting text, fields, help text, buttons, and borders.
 
 - **Test connection** reads model, firmware, inputs, and available zone status using the address currently entered. It does not send power, volume, mute, input-change, or remote-key commands.
 - The preview is timestamped. Missing status is shown as unknown rather than Off, and model-specific options account for restrictions such as the SLM's single zone.
@@ -134,7 +134,7 @@ The custom settings page groups receiver connection details, Zone 1/Zone 2 acces
 
 ### Advanced diagnostics and unknown Anthem models
 
-Open **Advanced diagnostics / Test unsupported device** in the connection section. Enter the device address and port, optionally enter the model printed on the device, choose its current power state, and select **Run diagnostics**. Use **Also query Zone 2** only when relevant. Start with the device powered on; repeat in standby if useful. No save or restart is needed to run the probe against the entered address.
+Open **Plugins → Anthem Receiver Plus tile → ⋮ → Plugin Config**, then expand **Advanced diagnostics / Test unsupported device** in the connection section. Enter the device address and port, optionally enter the model printed on the device, choose its current power state, and select **Run diagnostics**. Use **Also query Zone 2** only when relevant. Start with the device powered on; repeat in standby if useful. No save or restart is needed to run the probe against the entered address.
 
 This separate diagnostic mode accepts replies from unknown Anthem models (including investigations of additional hardware). It does **not** add those models to the supported-device list, create accessories, or prove that control commands work. Ordinary **Test connection** continues to use the existing supported-model check.
 
@@ -142,7 +142,7 @@ The bounded probe selects queries after model identification. Receiver discovery
 
 A query suffix does not guarantee read-only behavior on every Anthem model. In particular, upstream STR testing reports that `Z1BRT?` can change balance; this plugin never sends that command. Do not expand the probe with guessed commands. See the [STR user testing guide](STR_TESTING.md) for paired reports, physical control checks and evidence needed to add more features.
 
-Results show each query, its purpose, outcome, elapsed time, and explanation. A rejected older/newer query is labeled as an expected alternate-format rejection only when its counterpart answered successfully. Detected zone power, mute, volume, and input are shown separately from your optional power-state observation. Partial evidence is retained on cancellation, disconnection, or the 30-second overall limit. Queries are sequential and spaced; a query timeout closes the connection before the next probe so a late response cannot be attributed to a different command. This uses a separate TCP connection, so hardware that limits control sessions may require you to stop its plugin child bridge or other controller temporarily.
+Results show each query, its purpose, outcome, elapsed time, and explanation. A rejected older/newer query is labeled as an expected alternate-format rejection only when its counterpart answered successfully. Detected zone power, mute, volume, and input are shown separately from your optional power-state observation. Partial evidence is retained on cancellation, disconnection, or the 30-second overall limit. Queries are sequential and spaced; a query timeout closes the connection before the next probe so a late response cannot be attributed to a different command. For a first-time STR test, there is normally no Homebridge connection to stop. If this plugin is already configured for that same STR, pause its normal connection while running diagnostics: use its tile’s **⋮ → Stop Child Bridge**, or **Disable** and restart Homebridge if it has no child bridge. Leave Homebridge UI running. The [step-by-step STR guide](STR_TESTING.md) covers installation, reports, restarting control, and returning to the regular release.
 
 Use **Copy report** or **Download report** to attach the previewed JSON to a support issue. The report includes plugin/Node/Homebridge versions where available, user-reported power state, detected identity, query outcomes, and reply evidence. Schema version 2 adds a compact summary of attempted/answered/rejected queries and detected device state. `userContext.userReportedPowerState` is your optional dropdown selection (null when not specified); `summary.detectedState` comes from answered queries. Copy and download both contain the exact previewed JSON, including this summary and query explanations, so a second copy of the table is unnecessary. By default serial numbers, MAC addresses, input names, unsolicited/unrecognized contents, and raw byte samples are omitted; the configured address is redacted. **Include raw replies and device identifiers** explicitly adds raw reply text and bounded hex samples (useful for unfamiliar reply framing); review the preview before sharing. Homebridge configuration and pairing credentials are never included. Reports are not automatically sent anywhere.
 
@@ -200,7 +200,7 @@ sudo hb-service start
 
 This installs the latest stable version from npm. If installation fails, resolve the error before starting Homebridge. These terminal commands apply to the APT installation; use the installer appropriate to your setup on other systems.
 
-Open the plugin settings in Homebridge UI after a new installation. For normal Plus updates, keep your existing configuration and paired accessories. To inspect startup logs with the APT wrapper:
+After a new installation, open **Plugins → Anthem Receiver Plus tile → ⋮ → Plugin Config** in Homebridge UI. For normal Plus updates, keep your existing configuration and paired accessories. To inspect startup logs with the APT wrapper:
 
 ```bash
 sudo hb-service view
