@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.2.2 — 2026-09-12
+
+- Correct the configuration schema to use an object-level required-property array instead of boolean required flags on individual fields.
+- Add the optional plugin name property required by Homebridge verification, with a field in the standard schema layout.
+- Extend package checks to catch missing plugin-name schema metadata and invalid required declarations before publication.
+
 ## 1.2.1 — 2026-09-12
 
 - Move Homebridge from peer dependencies to development dependencies so npm does not install a second Homebridge runtime with the plugin. Retain the existing Homebridge compatibility range.

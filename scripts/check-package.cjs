@@ -12,6 +12,12 @@ for (const section of ['bundledDependencies', 'bundleDependencies']) {
     throw new Error('Homebridge and HAP-NodeJS must not be bundled with the plugin');
   }
 }
+const configSchema = JSON.parse(fs.readFileSync('config.schema.json', 'utf8'));
+if (configSchema.schema?.properties?.name?.type !== 'string') {
+  throw new Error('Config schema must contain a string name property');
+}
+const Ajv = require('ajv');
+new Ajv({ strict: false, allErrors: true }).compile(configSchema.schema);
 const result = spawnSync('npm', ['pack', '--dry-run', '--ignore-scripts', '--json'], { encoding: 'utf8', shell: process.platform === 'win32' });
 if (result.status) throw new Error(result.stderr || 'npm pack failed');
 const files = new Set(JSON.parse(result.stdout)[0].files.map(file => file.path));
