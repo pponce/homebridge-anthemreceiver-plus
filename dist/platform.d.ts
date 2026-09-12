@@ -1,0 +1,47 @@
+import type { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
+export declare class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
+    readonly log: Logger;
+    readonly config: PlatformConfig;
+    readonly api: API;
+    readonly Service: typeof Service;
+    readonly Characteristic: typeof Characteristic;
+    readonly accessories: PlatformAccessory[];
+    CreatedAccessories: PlatformAccessory[];
+    private Controller;
+    private Zone1Active;
+    private Zone2Active;
+    private Zone1Name;
+    private Zone2Name;
+    private Zone1Mute;
+    private Zone2Mute;
+    private Zone1Power;
+    private Zone2Power;
+    private Zone1ALM;
+    private Zone1MultipleInputs;
+    private Zone2MultipleInputs;
+    private Zone1ARC;
+    private Zone1Volume;
+    private Zone2Volume;
+    private Zone1DolbyPostProcessing;
+    private Zone2DolbyPostProcessing;
+    private PanelBrightness;
+    private Normalized?;
+    private LastConnectionError;
+    private MaxVolumeDB;
+    private InitialRun;
+    private IsRunning;
+    private AnthemReceiverPowerInputArray;
+    constructor(log: Logger, config: PlatformConfig, api: API);
+    configureAccessory(accessory: PlatformAccessory): void;
+    private DeviceCacheCleanUp;
+    discoverDevices(): void;
+    private ADDVolumeAccessory;
+    AddBrightnessAccessory(): void;
+    AddDolbyPostProcessingAccessory(Zone: number): void;
+    private CheckConfigFile;
+    HandleSet(action: () => void): Promise<void>;
+    ConfigureAvailability(accessory: PlatformAccessory): void;
+    private DumpControllerInfo;
+    ConfigureControllerError(): void;
+}
+//# sourceMappingURL=platform.d.ts.map
