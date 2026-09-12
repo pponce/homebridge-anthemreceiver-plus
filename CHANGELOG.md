@@ -6,7 +6,7 @@
 - Apply the STR −96 to +7 dB range and half-dB steps, including configured caps for STR volume buttons. Preserve receiver-family volume and existing MRX listening-mode identities.
 - Restrict STR control/startup commands; omit unsupported receiver features and bypass selection. Select ten STR diagnostic queries, skip Zone 2, expose mode evidence and mark experimental status.
 - Correct IDN diagnostics to MAC-address identity and redact MAC data explicitly. Clarify the known STR BRT query side effect.
-- Add STR_TESTING.md with PA/IA baseline, before/after, physical control and additional-feature reporting instructions; link it from settings and README.
+- Add a plain-language STR testing guide covering regular installation through Homebridge UI or hb-service, diagnostic reports, physical control checks and feedback for additional features; link it from Plugin Config and README.
 
 ## 1.1.0 — 2026-09-11
 

@@ -1,28 +1,30 @@
-# Anthem Receiver Plus 1.1.0
+# Anthem Receiver Plus 1.2.0
 
-Adds advanced read-only diagnostics for recognized and unknown Anthem hardware, with shareable reports for troubleshooting and future compatibility investigations.
+Adds experimental support for the Anthem STR Preamplifier (PA) and STR Integrated Amplifier (IA), together with diagnostics and an owner testing guide. Existing MRX and AVM support is retained.
 
-## Changes
+## STR controls
 
-- Fix Homebridge version discovery when package exports hide its manifest. Add detected-state and query-count summaries, distinguish optional user-reported power state, and explain rejected alternate-format queries in the UI and schema-v2 JSON reports.
+- Separate PA and IA profiles with one zone, power, mute and normal input selection.
+- Volume control from −96 to +7 dB in 0.5 dB steps. The configured maximum applies to the STR slider and volume buttons; 0% mutes.
+- Four STR listening modes: Stereo, Mono, Both Left and Both Right.
+- Restricted startup and control commands. ARC, brightness, menu navigation and Home Theatre Bypass selection remain disabled for STR pending further evidence.
 
-- Add generic advanced diagnostics to the configuration UI for recognized and unknown Anthem hardware, without changing runtime model support. Collect bounded read-only query outcomes, partial results, and optional raw reply/hex evidence.
-- Add report preview, copy/download actions, default privacy filtering, optional Zone 2 probing, and shared test cancellation/concurrency/cooldown safeguards.
+## Diagnostics and guidance
 
-- Upgrade the build compiler to TypeScript 7.0.2 or compatible 7.x updates. Resolve its CLI through the exported package manifest so builds and direct GitHub installations work with TypeScript 7's package exports.
-- Remove the unused `ts-node` development dependency; development watching already builds JavaScript before starting Homebridge.
+- Automatically select ten STR diagnostic queries, skip Zone 2 and include listening-mode readings.
+- Clearly identify experimental support in the UI, reports and startup log.
+- Correct IDN identification to MAC address and hide MAC data in the default report.
+- Exclude the BRT query reported to change STR balance on some firmware.
+- Add a plain-language guide for regular installation, report collection, Apple Home checks and feedback on missing features. Open Plugins → Anthem Receiver Plus tile → ⋮ → Plugin Config to get started.
 
 ## Testing and compatibility
 
-- The maintainer tested the diagnostics workflow on an MRX 540 8K.
-- Unknown-model diagnostics collect evidence; this release does not add STR or other new hardware to the supported-model list.
-- Report schema 2 separates user-reported power state from detected state and includes query counts and explanations. Copy and download contain the previewed JSON.
-- Existing settings and HomeKit accessory identities are preserved.
+Automated tests cover PA/IA simulations, command confirmation, volume limits, reconnects and preservation of existing MRX listening-mode switches, including None. The repository CI also checks Node.js 22/24, Homebridge 1.8/2.x, browser behavior, migration, packaging and installation.
+
+**Physical STR PA/IA validation is still needed. Experimental support is not a claim of confirmed operation on every model or firmware.** Please follow the [STR testing guide](https://github.com/pponce/homebridge-anthemreceiver-plus/blob/main/STR_TESTING.md) and share your results, including successful tests.
 
 ## Update
 
-Update homebridge-anthemreceiver-plus through Homebridge UI, then restart the relevant Homebridge instance or child bridge. Existing users do not need to remove accessories or reset pairing data.
+Install or update homebridge-anthemreceiver-plus normally through Homebridge UI, then restart the relevant Homebridge instance or child bridge. Existing users should keep their configuration and paired accessories.
 
-For users testing the GitHub branch: switch back to the npm package to receive stable releases.
-
-Requires Node.js 22 or 24 and Homebridge 1.8 or 2.x. Compiled dist files are included in the npm package and remain untracked in Git.
+Requires Node.js 22 or 24 and Homebridge 1.8 or 2.x. The npm package includes compiled dist files; main keeps generated dist untracked.

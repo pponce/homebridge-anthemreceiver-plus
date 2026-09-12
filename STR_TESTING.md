@@ -1,10 +1,14 @@
 # Testing your Anthem STR with Homebridge
 
-This guide walks you through installing the test version, sending a diagnostic report, and trying the controls in Apple Home. You do not need to understand the command names or edit any code.
+This guide walks you through installing the plugin, sending a diagnostic report, and trying the controls in Apple Home. You do not need to understand the command names or edit any code.
 
-It covers both the **STR Preamplifier (PA)** and **STR Integrated Amplifier (IA)**. Support is experimental: we need owners to check it on real equipment. The test version offers power, mute, normal input selection, volume, and four listening modes. ARC, front-panel brightness, menu navigation, and Home Theatre Bypass selection are not enabled yet.
+It covers both the **STR Preamplifier (PA)** and **STR Integrated Amplifier (IA)**. Support is experimental: we need owners to check it on real equipment. The plugin offers power, mute, normal input selection, volume, and four listening modes. ARC, front-panel brightness, menu navigation, and Home Theatre Bypass selection are not enabled yet.
 
-## 1. Install the test version
+## 1. Install or update Anthem Receiver Plus
+
+Experimental STR support is included starting with **Anthem Receiver Plus 1.2.0**. Install or update the plugin using its regular release.
+
+You can install or update **homebridge-anthemreceiver-plus** from the **Plugins** page in Homebridge UI. If you prefer SSH, follow the steps below.
 
 These commands are for a Linux system with Homebridge installed through the **Homebridge APT package**, where you use `sudo hb-service add` to install plugins. They assume Homebridge is already installed. If you use Docker, macOS, or another installation method, use the installation instructions for your setup instead.
 
@@ -12,31 +16,31 @@ Download a Homebridge backup before updating. If you already use Anthem Receiver
 
 1. Open an **SSH session to the computer running Homebridge**. Use SSH rather than the terminal inside Homebridge UI, because the installation temporarily stops that UI.
 2. Copy and paste the whole block below, including its opening `{` and closing `}`.
-3. Wait for **PASS: Test version installed and Homebridge started.** Installation can take several minutes. If you see **STOP**, save the output and resolve that error before continuing.
+3. Wait for **PASS: Anthem Receiver Plus installed and Homebridge started.** Installation can take several minutes. If you see **STOP**, save the output and resolve that error before continuing.
 
 ```bash
 {
-  printf '\n===== BEGIN STR TEST VERSION INSTALL =====\n'
+  printf '\n===== BEGIN ANTHEM RECEIVER PLUS INSTALL =====\n'
   if sudo hb-service stop; then
-    if sudo hb-service add 'pponce/homebridge-anthemreceiver-plus#str-experimental-install'; then
+    if sudo hb-service add homebridge-anthemreceiver-plus@latest; then
       if sudo hb-service start; then
-        printf '\nPASS: Test version installed and Homebridge started.\n'
+        printf '\nPASS: Anthem Receiver Plus installed and Homebridge started.\n'
         printf 'Open Homebridge UI in your browser and continue with step 2.\n'
       else
         printf '\nSTOP: Installed, but Homebridge did not start. Save the output above.\n'
       fi
     else
       printf '\nSTOP: Installation failed. Save the output above.\n'
-      printf 'Homebridge is stopped. Use the return-to-stable instructions below to recover.\n'
+      printf 'Homebridge is stopped. Resolve the installation error, then run this block again.\n'
     fi
   else
     printf '\nSTOP: Could not stop Homebridge; no installation was attempted.\n'
   fi
-  printf '\n===== END STR TEST VERSION INSTALL =====\n'
+  printf '\n===== END ANTHEM RECEIVER PLUS INSTALL =====\n'
 }
 ```
 
-This installs the special STR test version directly from this project. It also updates an existing installation of **Anthem Receiver Plus**. It does not install a second copy of Plus. Keep the command output with your test notes so we know which build you installed; the displayed version number can be the same as a regular release.
+This installs the latest published release of **Anthem Receiver Plus**, or updates your existing copy. It does not install a second copy. Afterward, check the version shown on the plugin tile: you need **1.2.0 or newer** for STR support. If an older version is shown, the required release is not installed yet; update before continuing.
 
 The block has no `exit` or `set -e` commands and will not close your SSH session. The Homebridge browser page will be unavailable while the service is stopped, then return after it starts.
 
@@ -48,7 +52,7 @@ Close the Anthem mobile app, if you use it, while running the test.
 
 **First time testing the STR?** If you have not already saved a configuration connecting this plugin to the STR, there is normally no Homebridge connection to stop. Continue to step 3. Leave Homebridge and its browser UI running.
 
-**Already configured this test plugin to control the same STR?** Pause its normal connection while collecting reports. This prevents the diagnostic test and the plugin from competing for the STR's connection:
+**Already configured this plugin to control the same STR?** Pause its normal connection while collecting reports. This prevents the diagnostic test and the plugin from competing for the STR's connection:
 
 1. In Homebridge UI, open **Plugins**.
 2. Find the **Anthem Receiver Plus** plugin tile.
@@ -87,7 +91,7 @@ The detected model should normally be **STR PA** for the preamplifier or **STR I
 ```text
 My device: STR Preamplifier / STR Integrated Amplifier
 Firmware version, if known:
-Installed using the STR test-version command: yes / no
+Anthem Receiver Plus version shown on the plugin tile:
 The STR was: on / standby
 Did you close the Anthem app, if used?
 Was this plugin already configured for this STR?
@@ -122,7 +126,7 @@ Give each file a different name so you can tell them apart. Do not change contro
 
 The report checks a limited set of features. It cannot discover every possible command. For example, adding ARC or balance may require the maintainer to provide a new test version first. We will tell you which action to try and which reports to send. Do not experiment with commands found online: some receiver commands can do something different on an STR.
 
-For **Home Theatre Bypass**, please say whether you have the preamplifier or integrated amplifier and describe how you currently enter and leave bypass using the device itself. They behave differently. This test version does not offer bypass selection in Apple Home.
+For **Home Theatre Bypass**, please say whether you have the preamplifier or integrated amplifier and describe how you currently enter and leave bypass using the device itself. They behave differently. The current STR support does not offer bypass selection in Apple Home.
 
 ## 6. Try controlling the STR from Apple Home
 
@@ -155,38 +159,16 @@ To view recent Homebridge logs from SSH, paste this block. It prints recent line
 
 Send only the relevant lines if requested, removing private information first.
 
-## 7. Finish testing or return to the regular release
+## 7. Finish testing
 
-If you want to keep using the test version, make sure this plugin is enabled and its child bridge is running, if it uses one. Reopen any apps you closed when you have finished testing.
+Make sure this plugin is enabled and its child bridge is running, if it uses one. Reopen any apps you closed and restore your usual STR input, listening mode, mute and volume.
 
-To return to the regular npm release of Anthem Receiver Plus, paste this block in SSH. **That release may not include STR support yet**, so STR controls may stop working after switching back. Existing Plus users can instead restore the particular release they were using before testing.
+If you selected **Disable** earlier, choose **Enable** from the plugin tile's **⋮** menu and restart Homebridge when prompted. If you selected **Stop Child Bridge**, choose **Start Child Bridge** from that menu.
 
-```bash
-{
-  printf '\n===== BEGIN RETURN TO REGULAR ANTHEM RELEASE =====\n'
-  if sudo hb-service stop; then
-    if sudo hb-service add homebridge-anthemreceiver-plus@latest; then
-      if sudo hb-service start; then
-        printf '\nPASS: Regular release installed and Homebridge started.\n'
-      else
-        printf '\nSTOP: Installed, but Homebridge did not start. Save the output above.\n'
-      fi
-    else
-      printf '\nSTOP: Installation failed; Homebridge remains stopped. Save the output above.\n'
-    fi
-  else
-    printf '\nSTOP: Could not stop Homebridge; no installation was attempted.\n'
-  fi
-  printf '\n===== END RETURN TO REGULAR ANTHEM RELEASE =====\n'
-}
-```
-
-Changing the installed version does not undo a **Disable** selection. If you disabled the plugin earlier and want to use it again, select **Enable** from its **⋮** menu and restart Homebridge. Start its child bridge too if it remains stopped.
+You are using the regular plugin release. Keep it updated through Homebridge UI to receive future STR fixes and improvements. STR support remains experimental until it has been confirmed on physical PA/IA hardware; please send your results even if everything worked.
 
 <details>
 <summary>Optional: technical details and background</summary>
-
-The installation branch is `str-experimental-install`; it includes compiled files. The source PR uses `str-experimental-support`. Maintainers should merge only the source PR.
 
 After identifying an STR, diagnostics use ten queries: `IDM?`, `IDS?`, `IDN?`, `ICN?`, `ISN01?`, `Z1POW?`, `Z1MUT?`, `Z1VOL?`, `Z1INP?`, and `Z1ALM?`. Only the first input name is sampled. STR listening-mode values are Stereo `7`, Mono `9`, Both Left `11`, and Both Right `12`. `IDN?` reads the MAC address, hidden in the default report. The diagnostic does not request native volume percentage; HomeKit volume is calculated from dB.
 
