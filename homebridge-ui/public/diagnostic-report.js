@@ -5,10 +5,10 @@ const AnthemDiagnosticReport = {
   explain(query, queries) {
     const purposes = {
       'IDM?': 'Model identification', 'IDS?': 'Firmware version', 'GSN?': 'Newer serial-number format',
-      'IDN?': 'Older serial-number format', 'ICN?': 'Input count', 'IS1IN?': 'Newer input-1 name format', 'ISN01?': 'Older input-1 name format',
+      'IDN?': 'MAC address (older receivers and STR)', 'ICN?': 'Input count', 'IS1IN?': 'Newer input-1 name format', 'ISN01?': 'Older input-1 name format',
     };
-    const zone = /^Z([12])(POW|MUT|VOL|PVOL|INP)\?$/.exec(query.command);
-    const purpose = purposes[query.command] || (zone ? `Zone ${zone[1]} ${{ POW: 'power', MUT: 'mute', VOL: 'volume in dB', PVOL: 'volume percentage', INP: 'selected input' }[zone[2]]}` : 'Protocol query');
+    const zone = /^Z([12])(POW|MUT|VOL|PVOL|INP|ALM)\?$/.exec(query.command);
+    const purpose = purposes[query.command] || (zone ? `Zone ${zone[1]} ${{ POW: 'power', MUT: 'mute', VOL: 'volume in dB', PVOL: 'volume percentage', INP: 'selected input', ALM: 'listening-mode number' }[zone[2]]}` : 'Protocol query');
     const errorCode = query.outcome === 'rejected' ? query.replies.find(reply => /^![EIRZ]/.test(reply))?.slice(0, 2) : undefined;
     const errors = { '!I': 'Invalid command', '!E': 'Command cannot be executed', '!R': 'Parameter out of range', '!Z': 'Zone is not powered' };
     const alternative = { 'IDN?': 'GSN?', 'GSN?': 'IDN?', 'ISN01?': 'IS1IN?', 'IS1IN?': 'ISN01?' }[query.command];
@@ -32,14 +32,14 @@ const AnthemDiagnosticReport = {
       else if (query.outcome === 'rejected') counts.rejected++;
       else counts.otherOutcomes++;
       if (this.explain(query, report.queries).expectedAlternativeRejection) counts.expectedAlternativeRejections++;
-      const command = /^Z([12])(POW|MUT|VOL|PVOL|INP)\?$/.exec(query.command);
+      const command = /^Z([12])(POW|MUT|VOL|PVOL|INP|ALM)\?$/.exec(query.command);
       if (command && !zones.has(Number(command[1]))) zones.set(Number(command[1]), {
         zone: Number(command[1]), power: null, muted: null, volumeDb: null, volumePercent: null, input: null,
       });
       if (query.outcome !== 'answered') continue;
       for (const reply of query.replies) {
         if (query.command === 'ICN?' && /^ICN\d+$/.test(reply)) inputCount = Number(reply.slice(3));
-        const state = /^Z([12])(POW|MUT|VOL|PVOL|INP)([+-]?\d+(?:\.\d+)?)$/.exec(reply);
+        const state = /^Z([12])(POW|MUT|VOL|PVOL|INP|ALM)([+-]?\d+(?:\.\d+)?)$/.exec(reply);
         if (!state || !command || state[1] !== command[1] || state[2] !== command[2]) continue;
         const zone = zones.get(Number(state[1])); const value = Number(state[3]);
         if (state[2] === 'POW') zone.power = value === 1 ? 'on' : 'off';
@@ -47,6 +47,7 @@ const AnthemDiagnosticReport = {
         if (state[2] === 'VOL') zone.volumeDb = value;
         if (state[2] === 'PVOL') zone.volumePercent = value;
         if (state[2] === 'INP') zone.input = value;
+        if (state[2] === 'ALM') zone.listeningMode = value;
       }
     }
     return { queries: counts, detectedState: { inputCount, zones: [...zones.values()] } };
@@ -66,17 +67,18 @@ const AnthemDiagnosticReport = {
       // Unknown and malformed reply contents may contain private identifiers.
       if (/^![EIRZ]/.test(reply)) return reply.slice(0, 2) + '[details omitted]';
       if (outcome !== 'answered') return '[reply content omitted]';
-      if (/^(GSN|IDN)/.test(reply)) return reply.slice(0, 3) + '[serial redacted]';
+      if (reply.startsWith('GSN')) return 'GSN[serial redacted]';
+      if (reply.startsWith('IDN')) return 'IDN[MAC redacted]';
       if (/^IS/.test(reply)) return '[input name omitted]';
-      if (command === 'IDM?' || command === 'IDS?' || /^(ICN\d+|Z[12](POW|MUT|VOL|PVOL|INP)[+-]?\d+(\.\d+)?)$/.test(reply)) return clean(reply);
+      if (command === 'IDM?' || command === 'IDS?' || /^(ICN\d+|Z[12](POW|MUT|VOL|PVOL|INP|ALM)[+-]?\d+(\.\d+)?)$/.test(reply)) return clean(reply);
       return '[reply content omitted]';
     };
     return {
       schemaVersion: 2, startedAt: report.startedAt, finishedAt: report.finishedAt,
       environment: report.environment, summary: this.summarize(report), connection: report.connection, finishReason: report.finishReason,
-      model: clean(report.model), firmware: clean(report.firmware), recognizedModel: report.recognizedModel,
+      model: clean(report.model), firmware: clean(report.firmware), recognizedModel: report.recognizedModel, experimental: report.experimental === true, queryProfile: report.queryProfile,
       userContext: { reportedModel: clean(context.reportedModel).slice(0, 120), userReportedPowerState: ['on', 'standby'].includes(context.powerState) ? context.powerState : null },
-      privacy: includePrivate ? 'Includes raw replies and device identifiers. Review before sharing.' : 'Serials, input names, and unrecognized replies omitted; configured address redacted.',
+      privacy: includePrivate ? 'Includes raw replies and device identifiers. Review before sharing.' : 'Serials, MAC addresses, input names, and unrecognized replies omitted; configured address redacted.',
       queries: report.queries.map(query => ({ command: query.command, outcome: query.outcome, ...this.explain(query, report.queries),
         elapsedMs: query.elapsedMs, receivedBytes: query.receivedBytes,
         ...(includePrivate ? { responseHex: query.responseHex } : {}), replies: query.replies.map(reply => replyText(reply, query.command, query.outcome)) })),

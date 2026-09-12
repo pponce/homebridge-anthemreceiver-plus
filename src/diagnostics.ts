@@ -1,5 +1,5 @@
 import net = require('node:net');
-import { capabilities } from './capabilities';
+import { capabilities, isSTR } from './capabilities';
 import { normalizeConfig } from './config';
 import { ResponseFramer, validateReply } from './protocol';
 
@@ -21,6 +21,8 @@ export interface DiagnosticReport {
   model: string;
   firmware: string;
   recognizedModel: boolean;
+  experimental?: boolean;
+  queryProfile?: string;
   queries: DiagnosticQuery[];
   unsolicitedReplies: string[];
   notes: string[];
@@ -31,6 +33,7 @@ export interface DiagnosticReport {
 const commonQueries = ['IDM?', 'IDS?', 'GSN?', 'IDN?', 'ICN?', 'IS1IN?', 'ISN01?',
   'Z1POW?', 'Z1MUT?', 'Z1VOL?', 'Z1PVOL?', 'Z1INP?'];
 const zone2Queries = ['Z2POW?', 'Z2MUT?', 'Z2VOL?', 'Z2PVOL?', 'Z2INP?'];
+const strQueries = ['IDS?', 'IDN?', 'ICN?', 'ISN01?', 'Z1POW?', 'Z1MUT?', 'Z1VOL?', 'Z1INP?', 'Z1ALM?'];
 
 /** Collect protocol evidence independently of model support and control initialization. */
 export class AnthemDiagnostics {
@@ -45,8 +48,9 @@ export class AnthemDiagnostics {
       schemaVersion: 1, startedAt: new Date().toISOString(), finishedAt: '', connection: 'not-connected',
       finishReason: 'finished', model: '', firmware: '', recognizedModel: false, queries: [], unsolicitedReplies: [],
       notes: [
-        'Read-only Anthem query probe. Replies do not verify control commands or HomeKit compatibility.',
-        'Both known serial-number and first-input query formats are sampled; rejections can be normal.',
+        'Selected Anthem queries only. Replies do not verify control commands or HomeKit compatibility.',
+        'Receiver profiles sample alternative device-identity and first-input query formats; rejections can be normal.',
+        'STR uses a restricted query list. Query syntax alone does not guarantee read-only behavior on every model; BRT is never queried.',
         'A timeout does not prove a feature is unsupported. Standby and connection limits can affect replies.',
         'Only the first input is sampled. Zone 2 is queried only when explicitly selected.',
         'Raw hex samples, when included, contain at most the first 1024 response bytes per query.',
@@ -107,7 +111,7 @@ export class AnthemDiagnostics {
             if (reply.length === active.command.length - 1) { active.resolve('unrecognized'); continue; }
             if (active.command === 'IDM?') {
               report.model = reply.slice(3).trim();
-              try { capabilities(report.model); report.recognizedModel = true; } catch { /* Evidence only. */ }
+              try { report.experimental = capabilities(report.model).experimental; report.recognizedModel = true; } catch { /* Evidence only. */ }
             }
             if (active.command === 'IDS?') report.firmware = reply.slice(3);
             active.resolve('answered');
@@ -118,7 +122,10 @@ export class AnthemDiagnostics {
       catch { connected(false); halt('connection-error', 'connection-error'); }
     });
     try {
-      for (const command of [...commonQueries, ...(includeZone2 ? zone2Queries : [])]) {
+      const commands = [...commonQueries, ...(includeZone2 ? zone2Queries : [])];
+      report.queryProfile = 'receiver-discovery';
+      for (let index = 0; index < commands.length; index++) {
+        const command = commands[index];
         if (stopped) break;
         if (!socket || socket.destroyed) {
           if (!await connect() || stopped) break;
@@ -141,6 +148,12 @@ export class AnthemDiagnostics {
           writingSocket.write(command + ';', error => { if (error && !stopped && socket === writingSocket) halt('connection-error', 'connection-error'); });
         });
         report.queries.push({ command, outcome, elapsedMs: Date.now() - started, replies, receivedBytes: capture.receivedBytes, responseHex: capture.responseHex });
+        if (command === 'IDM?' && isSTR(report.model)) {
+          commands.splice(index + 1, commands.length, ...strQueries);
+          report.queryProfile = report.model === 'STR PA' ? 'str-pa' : 'str-ia';
+          report.notes.push('Experimental STR profile: one zone, MAC identity, dB volume and STR listening mode. Hardware validation is pending.');
+          if (includeZone2) report.notes.push('Zone 2 was requested but skipped because STR has one zone.');
+        }
         if (!stopped) await pause();
       }
     } finally {

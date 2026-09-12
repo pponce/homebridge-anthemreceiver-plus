@@ -1,4 +1,4 @@
-import { AnthemAudioListeningMode, type AnthemController } from './AnthemController';
+import type { AnthemController } from './AnthemController';
 import { HKAccessory } from './HKAccessory';
 import type { AnthemReceiverHomebridgePlatform } from './platform';
 
@@ -21,11 +21,8 @@ export class HKALMAccessoryNG extends HKAccessory {
       .setCharacteristic(this.platform.Characteristic.SerialNumber, Controller.SerialNumber + ' ALM');
 
     // Create service list
-    // Append None without changing existing service subtypes or mode numbers.
-    const ALM = [
-      ...this.Controller.GetALMArray().map((name, index) => ({ name, mode: index + 1 })),
-      { name: 'None', mode: AnthemAudioListeningMode.NONE },
-    ];
+    // Model-specific numbers; receiver None and existing service subtypes remain stable.
+    const ALM = this.Controller.GetListeningModes();
 
     for(let i = 0 ; i < ALM.length ; i ++){
       const { name, mode } = ALM[i];

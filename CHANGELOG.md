@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add experimental, separate STR PA/IA profiles for one-zone power, mute, normal inputs, dB volume and the four STR listening modes. Physical-device validation is pending.
+- Apply the STR −96 to +7 dB range and half-dB steps, including configured caps for STR volume buttons. Preserve receiver-family volume and existing MRX listening-mode identities.
+- Restrict STR control/startup commands; omit unsupported receiver features and bypass selection. Select ten STR diagnostic queries, skip Zone 2, expose mode evidence and mark experimental status.
+- Correct IDN diagnostics to MAC-address identity and redact MAC data explicitly. Clarify the known STR BRT query side effect.
+- Add STR_TESTING.md with PA/IA baseline, before/after, physical control and additional-feature reporting instructions; link it from settings and README.
+
 ## 1.1.0 — 2026-09-11
 
 - Fix Homebridge version discovery when package exports hide its manifest. Add detected-state and query-count summaries, distinguish optional user-reported power state, and explain rejected alternate-format queries in the UI and schema-v2 JSON reports.

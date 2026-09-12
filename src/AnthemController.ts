@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { ResponseFramer, validateReply } from './protocol';
-import { capabilities } from './capabilities';
+import { capabilities, isSTR, isSTRCommand, strListeningModes } from './capabilities';
 import { CommandTransactions } from './transactions';
 import net = require('net');
 
@@ -35,7 +35,9 @@ export enum AnthemReceiverModel {
   MRXSLM = 'MRX SLM',
   AVM60 = 'AVM 60',
   AVM70 = 'AVM 70',
-  AVM90 = 'AVM 90'
+  AVM90 = 'AVM 90',
+  STRPA = 'STR PA',
+  STRIA = 'STR IA'
 }
 
 export enum AnthemAudioListeningMode {
@@ -58,6 +60,8 @@ export enum AnthemDolbyAudioPostProcessing {
 }
 
 const AllAnthemReceiverModel = [
+  AnthemReceiverModel.STRPA,
+  AnthemReceiverModel.STRIA,
   AnthemReceiverModel.MRX310,
   AnthemReceiverModel.MRX510,
   AnthemReceiverModel.MRX710,
@@ -81,6 +85,8 @@ const ProtocolV01Model = [
   AnthemReceiverModel.MRX720,
   AnthemReceiverModel.MRX1120,
   AnthemReceiverModel.AVM60,
+  AnthemReceiverModel.STRPA,
+  AnthemReceiverModel.STRIA,
 ];
 
 const ProtocolV02Model = [
@@ -333,8 +339,8 @@ export class AnthemController extends EventEmitter {
     }
 
     private GetHomeKitVolumeFromDb(DbValue:number):number{
-      const MinDb = -89.5;
-      const MaxDb = this.MaxVolumeDb;
+      const MinDb = this.IsSTR() ? -96 : -89.5;
+      const MaxDb = this.IsSTR() ? this.GetSTRMaxVolumeDb() : this.MaxVolumeDb;
 
       if(DbValue <= MinDb){
         return 1;
@@ -353,8 +359,8 @@ export class AnthemController extends EventEmitter {
     }
 
     private GetDbFromHomeKitVolume(HomeKitVolumePercent:number):number{
-      const MinDb = -89.5;
-      const MaxDb = this.MaxVolumeDb;
+      const MinDb = this.IsSTR() ? -96 : -89.5;
+      const MaxDb = this.IsSTR() ? this.GetSTRMaxVolumeDb() : this.MaxVolumeDb;
       const VolumePercent = this.Clamp(Math.round(HomeKitVolumePercent), 1, 100);
 
       if(MaxDb <= MinDb){
@@ -560,7 +566,24 @@ export class AnthemController extends EventEmitter {
       this.SetZoneInput(ZoneNumber, Input);
     }
 
+    IsSTR():boolean { return isSTR(this.ReceiverModel); }
+
+    GetCapabilities(){ return capabilities(this.ReceiverModel); }
+
+    GetListeningModes(){
+      return this.IsSTR() ? strListeningModes : [
+        ...this.GetALMArray().map((name, index) => ({ name, mode: index + 1 })),
+        { name: 'None', mode: AnthemAudioListeningMode.NONE },
+      ];
+    }
+
+    private GetSTRMaxVolumeDb():number {
+      // Round down so the receiver's half-dB step never exceeds the configured cap.
+      return Math.floor(Math.min(this.MaxVolumeDb, 7) * 2) / 2;
+    }
+
     GetALMArray():string[]{
+      if(this.IsSTR()) return strListeningModes.map(item => item.name);
       if(this.IsProtocolV01()){
         return ALMV01;
       }
@@ -595,6 +618,7 @@ export class AnthemController extends EventEmitter {
     // Insert a new command in the queue. Dont sent immediatly
     //
     private QueueCommand(Command:string){
+      if(this.IsSTR() && !isSTRCommand(Command)) throw new Error('This command is not enabled for experimental STR support');
       this.CommandArray.push(Command);
     }
 
@@ -770,7 +794,7 @@ export class AnthemController extends EventEmitter {
 
       this.QueueCommand('Z' + ZoneNumber + 'MUT0');
 
-      if(this.UseHomeKitDbVolumeMapping){
+      if(this.UseHomeKitDbVolumeMapping || this.IsSTR()){
         const TargetDb = this.GetDbFromHomeKitVolume(HomeKitVolume);
         this.QueueCommand('Z' + ZoneNumber + 'VOL' + TargetDb.toFixed(1));
       } else{
@@ -831,6 +855,10 @@ export class AnthemController extends EventEmitter {
     //
     // Availability: All models
     SetZoneInput(ZoneNumber: number, InputNumber: number){
+      if(this.IsSTR() && (!Number.isInteger(InputNumber) || InputNumber < 1 || InputNumber > this.InputNameArray.length
+        || (this.ReceiverModel === AnthemReceiverModel.STRIA && InputNumber === 32))) {
+        throw new Error('Select a discovered normal STR input; integrated bypass input 32 is not enabled');
+      }
       this.QueueCommand('Z' + ZoneNumber + 'INP' + InputNumber);
       this.SendCommand();
     }
@@ -856,6 +884,7 @@ export class AnthemController extends EventEmitter {
     //
     // Availability: All models
     GetZoneARCEnabled(ZoneNumber:number){
+      if(this.IsSTR()) return;
 
       if(!this.Zones[ZoneNumber].GetIsMainZone()){
         this.emit('ControllerError', AnthemControllerError.INVALID_COMMAND,
@@ -879,6 +908,7 @@ export class AnthemController extends EventEmitter {
     //
     // Availability: All models
     SetZoneARCEnabled(ZoneNumber:number, ARCEnabled:boolean){
+      if(this.IsSTR()) throw new Error('ARC control is not enabled for experimental STR support');
 
       if(!this.Zones[ZoneNumber].GetIsMainZone()){
         this.emit('ControllerError', AnthemControllerError.INVALID_COMMAND,
@@ -940,7 +970,8 @@ export class AnthemController extends EventEmitter {
         return;
       }
 
-      if(this.IsProtocolV02()){
+      if(this.IsSTR() && !strListeningModes.some(item => item.mode === AudioMode)) throw new Error('Listening mode is unavailable on STR');
+      if(this.IsProtocolV02() || this.IsSTR()){
         this.QueueCommand('Z' + ZoneNumber + 'ALM' + AudioMode);
       } else{
         throw new Error('Direct listening-mode selection is unavailable on this model; use the Apple Remote cycle control');
@@ -954,6 +985,13 @@ export class AnthemController extends EventEmitter {
     //
     // Availability: All models
     ToggleAudioListeningMode(ZoneNumber:number, UP: boolean){
+      if(this.IsSTR()) {
+        const modes = strListeningModes.map(item => item.mode);
+        const current = modes.indexOf(this.GetZone(ZoneNumber).GetALM());
+        if(current < 0) throw new Error('STR listening mode is not known yet; select a named mode');
+        this.SetAudioListeningMode(ZoneNumber, modes[(current + (UP ? 1 : modes.length - 1)) % modes.length]);
+        return;
+      }
       if(!this.Zones[ZoneNumber].GetIsMainZone()){
         this.emit('ControllerError', AnthemControllerError.COMMAND_ONLY_AVAILABLE_ON_MAIN_ZONE, '');
         return;
@@ -1054,6 +1092,7 @@ export class AnthemController extends EventEmitter {
     //
     // Availability: All models
     ToggleMute(ZoneNumber: number){
+      if(this.IsSTR()) { this.SetMute(ZoneNumber, !this.GetMute(ZoneNumber)); return; }
       this.QueueCommand('Z' + ZoneNumber + 'MUTt');
       this.SendCommand();
     }
@@ -1085,6 +1124,10 @@ export class AnthemController extends EventEmitter {
     //
     // Availability: All models
     VolumeUp(ZoneNumber: number){
+      if(this.IsSTR()) {
+        const db = this.Clamp(this.GetZone(ZoneNumber).GetVolume() + 0.5, -96, this.GetSTRMaxVolumeDb());
+        this.QueueCommand('Z' + ZoneNumber + 'VOL' + db.toFixed(1)); this.SendCommand(); return;
+      }
 
       if(this.IsProtocolV02()){
         this.QueueCommand('Z'+ ZoneNumber + 'VUP');
@@ -1104,6 +1147,10 @@ export class AnthemController extends EventEmitter {
     //
     // Availability: All models
     VolumeDown(ZoneNumber: number){
+      if(this.IsSTR()) {
+        const db = this.Clamp(this.GetZone(ZoneNumber).GetVolume() - 0.5, -96, this.GetSTRMaxVolumeDb());
+        this.QueueCommand('Z' + ZoneNumber + 'VOL' + db.toFixed(1)); this.SendCommand(); return;
+      }
 
       if(this.IsProtocolV02()){
         this.QueueCommand('Z'+ ZoneNumber + 'VDN');
@@ -1132,6 +1179,7 @@ export class AnthemController extends EventEmitter {
     //
     // Availability: All models
     GetConfigMenuState(){
+      if(this.IsSTR()) return;
       if(this.ReceiverModel === AnthemReceiverModel.MRXSLM) {
         return;
       } // MRX SLM Does not support on-screen config menu.
@@ -1168,6 +1216,7 @@ export class AnthemController extends EventEmitter {
       const model = capabilities(ModelString).model as AnthemReceiverModel;
       const changed = this.ReceiverModel !== model;
       this.ReceiverModel = model;
+      if(this.IsSTR()) this.RemoveControllingZone(2);
       if(changed) this.emit('ModelDetected', model);
     }
 
@@ -1380,7 +1429,7 @@ export class AnthemController extends EventEmitter {
           // Set VolumePercentage
           for(const ZoneNumber in this.Zones){
             const Zone = this.Zones[ZoneNumber];
-            if(Response.substring(0, 6) === ('Z' + ZoneNumber + 'PVOL')){
+            if(!this.IsSTR() && Response.substring(0, 6) === ('Z' + ZoneNumber + 'PVOL')){
               const ReceiverVolumePercent = Number(Response.substring(6, Response.length));
               if(this.UseHomeKitDbVolumeMapping){
                 const VolumeDb = this.GetReceiverDbFromPercent(ReceiverVolumePercent);
@@ -1402,7 +1451,7 @@ export class AnthemController extends EventEmitter {
             if(Response.substring(0, 5) === ('Z' + ZoneNumber + 'VOL')){
               Zone.SetVolume(Number(Response.substring(5, Response.length)));
 
-              if(this.UseHomeKitDbVolumeMapping){
+              if(this.UseHomeKitDbVolumeMapping || this.IsSTR()){
                 Zone.SetVolumePercentage(this.GetHomeKitVolumeFromDb(Zone.GetVolume()));
 
                 if(this.CurrentState === ControllerState.Operation){

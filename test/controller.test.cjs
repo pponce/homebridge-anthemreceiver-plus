@@ -88,3 +88,64 @@ test('None selection fails when the receiver does not confirm mode zero', async 
   assert.equal(receiver.states.Z1ALM, 1);
   assert.equal(controller.GetZone(1).GetALM(), 1);
 });
+
+for (const model of ['STR PA', 'STR IA']) {
+  test(`${model}: handshake, basic controls and read-back use only STR commands`, async t => {
+    const {controller: c, receiver: r} = await ready(t, { model });
+    assert.equal(c.GetCapabilities().experimental, true);
+    assert.equal(c.SerialNumber, 'AA:BB:CC:DD:EE:01');
+    assert.equal(c.GetCapabilities().zones, 1);
+    await c.RunCommand(() => c.PowerZone(1, true));
+    await c.RunCommand(() => c.SetMute(1, true));
+    await c.RunCommand(() => c.ToggleMute(1));
+    assert.equal(c.GetMute(1), false);
+    await c.RunCommand(() => c.SetZoneInput(1, 10));
+    assert.equal(c.GetZone(1).GetActiveInput(), 10);
+    for (const mode of [7, 9, 11, 12]) {
+      await c.RunCommand(() => c.SetAudioListeningMode(1, mode));
+      assert.equal(c.GetZone(1).GetALM(), mode);
+    }
+    await c.RunCommand(() => c.ToggleAudioListeningMode(1, true));
+    assert.equal(c.GetZone(1).GetALM(), 7);
+    await c.RunCommand(() => c.SetZoneVolumePercentage(1, 1));
+    assert.equal(r.states.Z1VOL, -96);
+    await c.RunCommand(() => c.SetZoneVolumePercentage(1, 100));
+    assert.equal(r.states.Z1VOL, 7);
+    await c.RunCommand(() => c.SetZoneVolumePercentage(1, 0));
+    assert.equal(r.states.Z1MUT, 1);
+    assert.equal(r.states.Z1VOL, 7);
+    await c.RunCommand(() => c.PowerZone(1, false));
+    assert.equal(c.GetZonePower(1), false);
+    assert.deepEqual(r.rejected, []);
+    assert.ok(!r.commands.some(command => /BRT|PVOL|ARC|GCFPB|SMD|SIM|^Z2|^GSN|^IS\d+IN/.test(command)));
+  });
+  test(`${model}: volume cap, half-dB feedback, reconnect and unsupported actions`, async t => {
+    const {controller: c, receiver: r} = await ready(t, { model, states: {Z1POW: 1, Z1VOL: -45.5} });
+    c.SetMaxVolumeDB(-10.2);
+    await c.RunCommand(() => c.SetZoneVolumePercentage(1, 100));
+    assert.equal(r.states.Z1VOL, -10.5);
+    await c.RunCommand(() => c.VolumeUp(1));
+    assert.equal(r.states.Z1VOL, -10.5);
+    await c.RunCommand(() => c.VolumeDown(1));
+    assert.equal(r.states.Z1VOL, -11);
+    await assert.rejects(c.RunCommand(() => c.SetAudioListeningMode(1, 0)), /unavailable/);
+    await assert.rejects(c.RunCommand(() => c.SetZoneARCEnabled(1, true)), /not enabled/);
+    await assert.rejects(c.RunCommand(() => c.ToggleConfigMenu()), /not enabled/);
+    await assert.rejects(c.RunCommand(() => c.SetZoneInput(1, 32)), /normal STR input/);
+    const resumed = once(c, 'ControllerReadyForOperation', {signal: AbortSignal.timeout(2500)});
+    r.states.Z1VOL = -42.5;
+    for (const socket of r.sockets) socket.end();
+    await resumed;
+    assert.equal(c.GetZone(1).GetVolume(), -42.5);
+    assert.ok(c.GetZone(1).GetVolumePercentage() > 1);
+    assert.deepEqual(r.rejected, []);
+  });
+}
+
+test('STR volume failures keep the confirmed state and fail the caller', async t => {
+  const {controller: c, receiver: r} = await ready(t, { model: 'STR PA', ignore: command => command === 'Z1VOL-96.0' });
+  await c.RunCommand(() => c.PowerZone(1, true));
+  await assert.rejects(c.RunCommand(() => c.SetZoneVolumePercentage(1, 1)), /confirm/);
+  assert.equal(r.states.Z1VOL, -40);
+  assert.equal(c.GetZone(1).GetVolume(), -40);
+});

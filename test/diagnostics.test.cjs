@@ -157,3 +157,29 @@ test('missing state is never reported as off and unexpected rejections stay unex
   assert.equal(summary.queries.otherOutcomes, 2);
   assert.equal(reportBuilder.explain(report.queries[1], report.queries).expectedAlternativeRejection, false);
 });
+
+for (const model of ['STR PA', 'STR IA']) test(`${model} selects restricted diagnostics and exports mode evidence with MAC redacted`, async t => {
+  const { fakeReceiver } = require('./fake-receiver.cjs');
+  const r = await fakeReceiver({model, states: {Z1POW: 1, Z1ALM: 12, Z1VOL: -96}});
+  t.after(() => r.close());
+  const report = await new AnthemDiagnostics(100, 3000, 0).run({Host: '127.0.0.1', Port: r.port}, true);
+  assert.equal(report.experimental, true);
+  assert.equal(report.recognizedModel, true);
+  assert.equal(report.queryProfile, model === 'STR PA' ? 'str-pa' : 'str-ia');
+  assert.equal(report.queries.length, 10);
+  assert.ok(report.queries.every(q => q.outcome === 'answered'));
+  assert.deepEqual(r.rejected, []);
+  assert.ok(!r.commands.some(c => /BRT|PVOL|^Z2|^GSN|^IS1IN/.test(c)));
+  assert.ok(report.notes.some(note => /Zone 2.*skipped/.test(note)));
+  const exported = reportBuilder.build(report);
+  assert.equal(exported.summary.detectedState.zones[0].listeningMode, 12);
+  assert.equal(exported.summary.detectedState.zones[0].volumeDb, -96);
+  assert.deepEqual(exported.queries.find(q => q.command === 'Z1ALM?').replies, ['Z1ALM12']);
+  assert.match(exported.queries.find(q => q.command === 'IDN?').purpose, /MAC/);
+  assert.ok(!JSON.stringify(exported).includes('AA:BB:CC:DD:EE:01'));
+  const preview = await new ConnectionTester(1000, 0).test({Host: '127.0.0.1', Port: r.port});
+  assert.equal(preview.complete, true);
+  assert.equal(preview.capabilities.experimental, true);
+  assert.equal(preview.zones.length, 1);
+  assert.deepEqual(r.rejected, []);
+});

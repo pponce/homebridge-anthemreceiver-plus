@@ -72,6 +72,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
 
         this.Controller.on('ModelDetected', model => {
           const supported = capabilities(model);
+          if(supported.experimental) this.log.warn('Experimental STR support: hardware validation is pending. See STR_TESTING.md for diagnostic and control checks.');
           if(supported.zones === 1) {
             this.Controller.RemoveControllingZone(2);
             if(this.Normalized && zoneEnabled(this.Normalized.Zone2)) this.log.warn('This receiver has one zone; Zone 2 controls will not be created. Saved settings are preserved.');
@@ -168,11 +169,11 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
       new HKInputAccessoryNG(this, this.Controller, 1);
     }
 
-    if(this.Zone1ARC){
+    if(this.Zone1ARC && this.Controller.GetCapabilities().arc){
       new HKARCAccessory(this, this.Controller, 1);
     }
 
-    if(this.Zone1ALM && this.Controller.IsProtocolV02()){
+    if(this.Zone1ALM && this.Controller.GetCapabilities().directListeningMode){
       new HKALMAccessoryNG(this, this.Controller, 1);
     }
 
@@ -216,7 +217,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
 
   private ADDVolumeAccessory(ZoneNumber: number){
 
-    if(!this.Controller.IsProtocolV02()){
+    if(!this.Controller.GetCapabilities().volume){
       this.log.error('Volume Accessory: Zone' + ZoneNumber + ' Not adding accessory (only supported on X40 Serie)');
       return;
     }

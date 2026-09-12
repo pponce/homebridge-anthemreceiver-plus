@@ -146,3 +146,41 @@ test('advanced diagnostics preserve configuration and export the exact privacy-c
   await page.getByLabel('Receiver IP address or hostname').fill('other-device');
   assert.equal(await page.locator('#diagnostic-results').textContent(), '');
 });
+
+test('STR preview disables receiver features, labels experimental support, and exports mode evidence', async t => {
+  const page = await pageFor(t, [{ platform: 'AnthemReceiver', Host: 'str', PanelBrightness: true,
+    Zone1: { ARC: true, ALM: true, Volume: true, DolbyPostProcessing: true }, Zone2: { Active: true } }]);
+  await page.evaluate(() => {
+    const original = homebridge.request;
+    homebridge.request = async (route, value) => {
+      if (route === '/test-connection') return {ok: true, receiver: {
+        model: 'STR IA', firmware: '1.8.30', serial: 'AA:BB:CC:DD:EE:01', checkedAt: new Date().toISOString(), complete: true,
+        capabilities: {model: 'STR IA', protocol: 1, experimental: true, zones: 1, brightness: false, volume: true, dolby: false, arc: false, directListeningMode: true},
+        zones: [{number: 1, power: true, mute: false, volume: -42.5, input: 1}], inputs: [{number: 1, name: 'Input 1'}]
+      }};
+      if (route === '/diagnostics') return {ok: true, report: {
+        model: 'STR IA', firmware: '1.8.30', recognizedModel: true, experimental: true, queryProfile: 'str-ia', connection: 'connected', finishReason: 'finished',
+        startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(), notes: [], unsolicitedReplies: [], queries: [
+          {command: 'IDN?', outcome: 'answered', elapsedMs: 5, receivedBytes: 21, replies: ['IDNAA:BB:CC:DD:EE:01'], responseHex: ''},
+          {command: 'Z1ALM?', outcome: 'answered', elapsedMs: 5, receivedBytes: 8, replies: ['Z1ALM12'], responseHex: ''},
+        ]
+      }};
+      return original(route, value);
+    };
+  });
+  await page.getByRole('button', {name: 'Test connection', exact: true}).click();
+  await page.waitForFunction(() => document.getElementById('capability-note').textContent.includes('experimental'));
+  assert.equal(await page.getByLabel('Anthem Room Correction (ARC)', {exact: true}).isDisabled(), true);
+  assert.equal(await page.getByLabel('Listening-mode switches', {exact: true}).isDisabled(), false);
+  assert.ok((await page.locator('#preview').textContent()).includes('MAC AA:BB:CC:DD:EE:01'));
+  assert.equal(await page.evaluate(() => saved[0].Zone1.ARC), true);
+  await page.locator('#diagnostics summary').click();
+  await page.getByRole('button', {name: 'Run diagnostics', exact: true}).click();
+  await page.locator('.anthem-diagnostic-report').waitFor();
+  const report = JSON.parse(await page.locator('.anthem-diagnostic-report').textContent());
+  assert.equal(report.experimental, true);
+  assert.equal(report.queryProfile, 'str-ia');
+  assert.equal(report.summary.detectedState.zones[0].listeningMode, 12);
+  assert.ok(!JSON.stringify(report).includes('AA:BB:CC:DD:EE:01'));
+  assert.ok((await page.locator('#diagnostic-results').textContent()).includes('Experimental support'));
+});
