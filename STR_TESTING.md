@@ -1,127 +1,201 @@
-# STR PA / IA testing and diagnostic reports
+# Testing your Anthem STR with Homebridge
 
-This guide is for owners helping validate **experimental** support in `homebridge-anthemreceiver-plus` and investigate additional STR commands. `STR PA` is the STR Preamplifier; `STR IA` is the STR Integrated Amplifier. A recognized model or an answered query does not mean the plugin has been physically validated on that device.
+This guide walks you through installing the test version, sending a diagnostic report, and trying the controls in Apple Home. You do not need to understand the command names or edit any code.
 
-The initial implementation covers one zone, power, mute, discovered normal inputs, dB volume, and four listening modes. ARC control, front-panel brightness, menu navigation, and Home Theatre Bypass selection are not enabled. This is a plugin limitation, not a claim that the hardware lacks those features.
+It covers both the **STR Preamplifier (PA)** and **STR Integrated Amplifier (IA)**. Support is experimental: we need owners to check it on real equipment. The test version offers power, mute, normal input selection, volume, and four listening modes. ARC, front-panel brightness, menu navigation, and Home Theatre Bypass selection are not enabled yet.
 
-## 1. Prepare the device and record your setup
+## 1. Install the test version
 
-1. Use the experimental build supplied by the maintainer. Record the installed plugin version **and branch/commit**; a test branch may have the same package version as a stable release. The source PR uses `str-experimental-support`; the companion `str-experimental-install` branch includes compiled `dist` for installations that require it. Merge the source PR only.
-2. Record whether you have the **Preamplifier (PA)** or **Integrated Amplifier (IA)**, its firmware version, and whether Home Theatre Bypass is configured. Do not assume the model string based only on its front-panel name.
-3. Turn the STR on and wait for it to finish starting. Ensure its network control is enabled, using the settings described in your STR manual. Receiver web-UI instructions for MRX models may not apply to STR.
-4. Close the Anthem mobile app and other control integrations for the test. A second connection can displace an existing connection on some devices. If the plugin already controls the STR, temporarily stop its **child bridge**, leaving Homebridge UI running. Do not stop the entire UI service if you need it to run diagnostics. For a setup without a separate child bridge, ask the maintainer for an isolation procedure if competing connections prevent testing.
-5. Note the device address privately and the control port (normally **14999**). You do not need to include the address in a public report.
+These commands are for a Linux system with Homebridge installed through the **Homebridge APT package**, where you use `sudo hb-service add` to install plugins. They assume Homebridge is already installed. If you use Docker, macOS, or another installation method, use the installation instructions for your setup instead.
 
-## 2. Capture a powered-on baseline
+Download a Homebridge backup before updating. If you already use Anthem Receiver Plus, keep its configuration and existing Apple Home accessories. You do not need another Anthem plugin for this test.
 
-1. Open **Homebridge UI → Plugins → Anthem Receiver Plus → Settings**.
-2. Enter the STR address and port under the connection settings. Running the diagnostic against these entered values does not require saving them or restarting Homebridge.
-3. Expand **Advanced diagnostics / Test unsupported device**. The section is also useful for experimental models already recognized by the plugin.
-4. Enter `STR Preamplifier` or `STR Integrated Amplifier` in **Model printed on the device**. Choose **On** under **Your observed power state**.
-5. Leave **Also query Zone 2** unchecked. Both STR profiles have one zone; the probe skips Zone 2 even if selected.
-6. Select **Run diagnostics** and wait for completion (up to 30 seconds). Do not change input, mute, power, or volume during the run: queries are sequential, not a simultaneous snapshot.
-7. Check the detected model. The expected identity reply is `IDMSTR PA` or `IDMSTR IA`. If it differs, save the report and tell the maintainer; do not edit the reply or force an MRX model.
-8. Leave **Include raw replies and device identifiers** unchecked. Review the JSON, then use **Download report** or **Copy report**. Save it as `str-pa-on-baseline.json` or `str-ia-on-baseline.json`.
+1. Open an **SSH session to the computer running Homebridge**. Use SSH rather than the terminal inside Homebridge UI, because the installation temporarily stops that UI.
+2. Copy and paste the whole block below, including its opening `{` and closing `}`.
+3. Wait for **PASS: Test version installed and Homebridge started.** Installation can take several minutes. If you see **STOP**, save the output and resolve that error before continuing.
 
-Copy and Download contain the same JSON shown in the preview, including query counts, explanations, and detected states. You do not need to duplicate the results table. Nothing is sent to the maintainer automatically.
-
-## 3. Understand the STR query results
-
-Once the device identifies itself as PA or IA, this build uses ten selected queries:
-
-| Query | Evidence it provides | What to compare physically |
-| --- | --- | --- |
-| `IDM?` | Model identity | PA versus IA |
-| `IDS?` | Firmware information | Device's firmware screen |
-| `IDN?` | MAC identity, redacted by default | Whether identity was answered; no public MAC needed |
-| `ICN?` | Reported input count | Normal configured inputs |
-| `ISN01?` | First input's name, redacted by default | Whether the first-input naming query works |
-| `Z1POW?` | Zone power | On or standby |
-| `Z1MUT?` | Mute state | Muted or unmuted |
-| `Z1VOL?` | Volume in dB | Front-panel dB value |
-| `Z1INP?` | Selected input number | Input you selected manually |
-| `Z1ALM?` | Listening-mode number | Stereo `7`, Mono `9`, Both Left `11`, Both Right `12` |
-
-`recognizedModel: true` with `experimental: true` means this build has an experimental profile. It does not certify compatibility. `queryProfile` identifies `str-pa` or `str-ia`.
-
-The STR probe does not query `GSN?`, `IS1IN?`, or `Z1PVOL?`. Volume percentage may therefore appear as **Unknown** in the diagnostic table; the plugin derives its HomeKit percentage from dB. The optional observed-power dropdown is your statement; detected power comes from `Z1POW?`.
-
-An **answered** query confirms a readable response, not that its corresponding control command works. **Rejected** means the STR returned a protocol error; **timeout** means no matching response arrived in time. Either can depend on standby, firmware, startup, or another control connection. Keep partial reports even when a run fails.
-
-## 4. Collect a small set of before/after reports
-
-Use the STR front panel or supplied remote for these changes, then let the state settle and run diagnostics again. This tests whether the plugin can read physical changes independently of whether plugin control works. Keep other settings unchanged between each pair and wait at least five seconds between runs.
-
-| Test | Manual change | Suggested report names |
-| --- | --- | --- |
-| Power | Put the STR in standby; choose **Standby** in the observation dropdown | `str-pa-standby.json`, then `str-pa-on-again.json` |
-| Mute | Toggle mute while powered on | `str-pa-muted.json`, `str-pa-unmuted.json` |
-| Volume | At your normal quiet level, change the front-panel value by **0.5 dB** | `str-pa-volume-before.json`, `str-pa-volume-after.json` |
-| Input | Select a second normal configured input | `str-pa-input-before.json`, `str-pa-input-after.json` |
-| Listening mode | Select each of the available four STR listening modes | `str-pa-stereo.json`, `str-pa-mono.json`, `str-pa-left.json`, `str-pa-right.json` |
-
-Use `str-ia-` filenames for an integrated amplifier. Do only the tests available on your setup. Tell the maintainer which physical input or mode corresponds to each report, using generic labels if you prefer to keep input names private. Restore your original input, mode, mute and volume afterward.
-
-For standby failures, specify whether network control remains enabled in standby and whether the run recovered when you turned the STR on again. A standby timeout alone does not establish lack of power-on support.
-
-## 5. Separately validate control from Apple Home
-
-After collecting diagnostics, restore the plugin child bridge and use **Test connection** to preview the recognized experimental profile. Enable the desired Zone 1 controls, save, and restart the relevant bridge. Pair the TV/Power/Input accessory separately if using Apple Remote, following the README.
-
-Start at a quiet, familiar volume and set the plugin's **Maximum volume (dB)** to match a suitable limit on the STR. The STR slider always uses dB commands: 1% is −96 dB, 100% is the configured cap or +7 dB if blank, and 0% mutes. Values round to 0.5 dB. STR up/down buttons also honor this cap. You do not need to test the maximum or sweep the full slider.
-
-For each of power, mute, a normal input, a small volume change, and a listening-mode selection, record:
-
-- What you requested in Apple Home.
-- What actually changed on the STR's display or audio output.
-- Whether Apple Home showed the confirmed result or an error.
-- Whether a subsequent front-panel change appeared in Apple Home.
-
-Also test one bridge restart while the STR is on and one while it is in standby. Report readiness, reconnect behavior, and whether accessories retain their names and state. Diagnostic success does not replace these checks. Do not run diagnostics concurrently with these control tests.
-
-## 6. Provide evidence for an additional feature
-
-Describe the missing feature precisely: for example, ARC enable/disable, balance, a particular input, or bypass. Include the exact model, firmware, the relevant control-protocol document/revision/page if available, and how the feature behaves when used manually.
-
-The current diagnostic has a fixed selection of queries; it is **not a command console or packet recorder**. For a feature such as balance or ARC that it does not query, before/after reports may establish surrounding power/input state but cannot reveal that feature's command or value. The maintainer must first review the model's documentation and provide a build with an appropriate query before asking you to collect its responses. Do not guess commands or append `?` to an arbitrary command.
-
-In particular, upstream STR testing reports that **`Z1BRT?` can change channel balance**, despite looking like a query. This plugin does not send it. Report an unexpected balance change immediately and stop that test.
-
-Home Theatre Bypass needs separate PA/IA investigation:
-
-- **PA:** upstream owner reports describe bypass through standby and physical relays. Describe how your configured PA behaves; do not treat it as a normal selectable input.
-- **IA:** upstream owner reports identify a special input `32` while powered on. This experimental build does not synthesize or select that bypass input. Report its behavior through the front panel and provide the model-specific documentation before requesting plugin control.
-
-If input discovery is incomplete, include the separate **Test connection** result and the number of inputs shown physically. Advanced diagnostics samples only input 1; it does not enumerate all input names or test every selectable input.
-
-## 7. Share the report with the maintainer
-
-Create an issue in [homebridge-anthemreceiver-plus](https://github.com/pponce/homebridge-anthemreceiver-plus/issues), or reply to the issue where testing was requested. Attach the redacted JSON reports and this completed template:
-
-```text
-Device: STR PA / STR IA
-Firmware:
-Plugin version:
-Test branch and commit:
-Homebridge / Node versions (if unavailable in the report):
-Network control enabled in standby: yes / no / unknown
-Anthem app and other controllers closed: yes / no
-Plugin child bridge stopped during diagnostics: yes / no / not applicable
-Home Theatre Bypass configured: yes / no
-
-Report filename -> physical state/action:
-
-Confirmed working controls:
-Failing controls (request -> physical result -> HomeKit result):
-Behavior after bridge restart, standby, or disconnect:
-
-Additional feature requested:
-How it works using the front panel/remote:
-Control-protocol document link, revision, and page:
+```bash
+{
+  printf '\n===== BEGIN STR TEST VERSION INSTALL =====\n'
+  if sudo hb-service stop; then
+    if sudo hb-service add 'pponce/homebridge-anthemreceiver-plus#str-experimental-install'; then
+      if sudo hb-service start; then
+        printf '\nPASS: Test version installed and Homebridge started.\n'
+        printf 'Open Homebridge UI in your browser and continue with step 2.\n'
+      else
+        printf '\nSTOP: Installed, but Homebridge did not start. Save the output above.\n'
+      fi
+    else
+      printf '\nSTOP: Installation failed. Save the output above.\n'
+      printf 'Homebridge is stopped. Use the return-to-stable instructions below to recover.\n'
+    fi
+  else
+    printf '\nSTOP: Could not stop Homebridge; no installation was attempted.\n'
+  fi
+  printf '\n===== END STR TEST VERSION INSTALL =====\n'
+}
 ```
 
-Default reports omit MAC/serial identifiers, input names, unknown reply contents and raw hex, and redact the configured address. Raw export is optional and can expose identifying data, including data encoded as hex. Use it only when the maintainer needs missing protocol evidence; review it and agree on an appropriate sharing method. Do not attach your full Homebridge configuration or pairing credentials. Add a short relevant log excerpt only if needed, redacting private data.
+This installs the special STR test version directly from this project. It also updates an existing installation of **Anthem Receiver Plus**. It does not install a second copy of Plus. Keep the command output with your test notes so we know which build you installed; the displayed version number can be the same as a regular release.
 
-## Implementation evidence
+The block has no `exit` or `set -e` commands and will not close your SSH session. The Homebridge browser page will be unavailable while the service is stopped, then return after it starts.
 
-The starting evidence is [python-anthemav PR #40](https://github.com/nugget/python-anthemav/pull/40) and its owner discussions, including model identity, command differences, volume range and bypass behavior. That PR was open and unmerged when reviewed on 2026-09-12. The initial plugin implementation has simulated-device coverage; owner reports from each physical PA/IA firmware remain necessary before marking support confirmed.
+## 2. Get ready to collect a report
+
+Turn the STR on, wait for it to finish starting, and note its IP address. You can usually find the address in your router's list of connected devices. Check that network control is enabled on the STR using its manual. Set the volume to a quiet level you normally use.
+
+Close the Anthem mobile app, if you use it, while running the test.
+
+**First time testing the STR?** If you have not already saved a configuration connecting this plugin to the STR, there is normally no Homebridge connection to stop. Continue to step 3. Leave Homebridge and its browser UI running.
+
+**Already configured this test plugin to control the same STR?** Pause its normal connection while collecting reports. This prevents the diagnostic test and the plugin from competing for the STR's connection:
+
+1. In Homebridge UI, open **Plugins**.
+2. Find the **Anthem Receiver Plus** plugin tile.
+3. Click the **vertical three dots (⋮)** on that tile.
+4. Select **Stop Child Bridge**, if that option is present. A child bridge is simply a way to run this plugin separately from your other plugins. Stopping it temporarily pauses its Apple Home controls but leaves Homebridge UI available.
+5. If this plugin has no child bridge, select **Disable** instead, confirm, and restart Homebridge when prompted. You can still open **Plugin Config** to run the diagnostic. Do not uninstall the plugin or delete its configuration.
+
+If you happen to use another app or integration that connects to this same STR, pause that connection too. This is optional troubleshooting for an existing connection; it does **not** assume another working Homebridge STR plugin exists. Leave plugins for unrelated devices alone.
+
+Do not run `hb-service stop` for the report itself: that would also close the browser UI you need. The stop/start commands in step 1 are only for installation.
+
+## 3. Open Plugin Config and run the first test
+
+1. In Homebridge UI, open **Plugins**.
+2. Find the **Anthem Receiver Plus** tile and click its **vertical three dots (⋮)**.
+3. Choose **Plugin Config**.
+4. Enter the STR's address under **Receiver IP address or hostname**. Leave **TCP port** at **14999**, unless you know yours is different.
+5. Expand **Advanced diagnostics / Test unsupported device**. Use this section even if the plugin already recognizes your STR.
+6. Under **Model printed on the device**, enter **STR Preamplifier** or **STR Integrated Amplifier**.
+7. Under **Your observed power state**, choose **On**.
+8. Leave **Also query Zone 2** unchecked. The STR has one zone.
+9. Click **Run diagnostics**. Wait for the report to appear; it can take up to 30 seconds. Leave the STR's controls alone during the run.
+
+**You do not need to click Save or restart Homebridge to run diagnostics.** The test uses the address you just entered. Save comes later, when you are ready to try Apple Home control.
+
+The detected model should normally be **STR PA** for the preamplifier or **STR IA** for the integrated amplifier. If it shows something else, keep the report and tell us. You do not need to change a model selection.
+
+## 4. Save and send your report
+
+1. Leave **Include raw replies and device identifiers** unchecked.
+2. Click **Download report**. Your browser downloads a file called `anthem-diagnostics.json`.
+3. Rename it to something memorable, such as `str-pa-on.json` or `str-ia-on.json`.
+4. Attach the file to the [GitHub issue where you are discussing STR support](https://github.com/pponce/homebridge-anthemreceiver-plus/issues), or open a new issue there.
+5. Include the short note below. Fill in what you know; **not sure** is fine.
+
+```text
+My device: STR Preamplifier / STR Integrated Amplifier
+Firmware version, if known:
+Installed using the STR test-version command: yes / no
+The STR was: on / standby
+Did you close the Anthem app, if used?
+Was this plugin already configured for this STR?
+If yes, did you stop its child bridge or disable it for this test?
+Report filename:
+What worked, failed, or looked unexpected?
+What additional feature would you like?
+```
+
+**Copy report** is an alternative if you prefer to paste the report into your issue. It contains the same information as the downloaded file, including the results and counts. There is no need to copy the table separately, and nothing is sent automatically.
+
+You do not need to interpret every line. **Answered** means the STR replied. **Rejected** or **Timeout** means that part of the test did not get the expected answer; send the report anyway. Some readings may be unavailable in standby. Volume **percentage** may show **Unknown** on STR even when the volume in **dB** is read correctly.
+
+The default report hides device identifiers and input names. Do not attach your complete Homebridge configuration, passwords, or pairing code. Only enable the raw-reply option if the maintainer requests it and explains how to share it.
+
+## 5. Help us check more features
+
+A powered-on report is a useful first step. If you have time, collect a second report with the STR in standby. Choose **Standby** in the dropdown before running that test, and save it with `standby` in the filename. Then turn the STR back on. Tell us if testing only works while it is on.
+
+For more detailed checks, change **one thing at a time using the STR's front panel or its own remote**, then run diagnostics again. Keep the plugin paused if you paused it earlier. Wait at least five seconds between runs.
+
+| What to check | What to do | What to tell us |
+| --- | --- | --- |
+| Mute | Save one report unmuted and another muted. | Which report is which. |
+| Volume | At a quiet level, change the volume by 0.5 dB and save another report. | The dB value shown on the STR before and after. |
+| Inputs | Select a different normal input and save another report. | Which input was selected for each report. Generic names such as “Input A” are fine. |
+| Listening modes | Try Stereo, Mono, Both Left, and Both Right, if available, saving a report for each. | The mode selected for each report. |
+
+Give each file a different name so you can tell them apart. Do not change controls during a diagnostic run. Restore your normal input, listening mode, mute and volume when finished.
+
+**Want a feature that is not listed here?** Describe what it does and how you use it on the STR. A manual page or photo of the relevant screen is helpful. You do not need to find or type technical commands.
+
+The report checks a limited set of features. It cannot discover every possible command. For example, adding ARC or balance may require the maintainer to provide a new test version first. We will tell you which action to try and which reports to send. Do not experiment with commands found online: some receiver commands can do something different on an STR.
+
+For **Home Theatre Bypass**, please say whether you have the preamplifier or integrated amplifier and describe how you currently enter and leave bypass using the device itself. They behave differently. This test version does not offer bypass selection in Apple Home.
+
+## 6. Try controlling the STR from Apple Home
+
+Do this after collecting your diagnostic reports. It checks whether the controls actually work, not just whether the STR answers questions.
+
+1. Keep the STR on at a quiet volume.
+2. Go to **Plugins → Anthem Receiver Plus tile → ⋮ → Plugin Config**.
+3. Check the address and click **Test connection**. If the STR is not recognized or the connection fails, send the report before continuing.
+4. Under **Zone 1**, enable the controls you want to test, such as **Power switch**, **Mute switch**, and **Volume control**. **Listening-mode switches** is under **Audio processing controls**. Leave Zone 2 off.
+5. Set **Maximum volume (dB)** to match a suitable maximum already configured on your STR. Use your usual limit; you do not need to test loud levels. If this field is blank, the STR slider can reach +7 dB at 100%.
+6. Click **Save**.
+7. If you selected **Disable** earlier, return to the tile's **⋮** menu and select **Enable**. Restart Homebridge as prompted. If you stopped its child bridge, select **Start Child Bridge** after saving; restart it if prompted. If neither applies, restart Homebridge to load the saved configuration.
+8. Open Apple Home and try one control at a time. If you set up a new child bridge, pair it using the QR code shown by Homebridge UI. If you enabled **TV accessory and Apple Remote**, also follow the [separate Power/Input pairing instructions](README.md#adding-the-powerinput-accessory-to-the-home-app).
+
+Try power, mute, a normal input, a small volume change, and a listening mode. Record what you tapped, what the STR actually did, and whether Apple Home showed the right result. Then change something on the STR itself and check whether Apple Home catches up.
+
+The separate volume control looks like a light in Apple Home: its slider changes volume and its on/off switch changes mute. Turn the STR on with its power control first. At 0% the slider mutes; above 0% it unmutes and changes the volume. You do not need to move it to 100% for this test.
+
+If you can, also restart the plugin once while the STR is on and once while it is in standby. Tell us whether it reconnects and keeps the same accessories. Pause normal control again before collecting any further diagnostic reports.
+
+To view recent Homebridge logs from SSH, paste this block. It prints recent lines and returns to your prompt:
+
+```bash
+{
+  printf '\n===== BEGIN RECENT HOMEBRIDGE LOGS =====\n'
+  sudo hb-service view
+  printf '\n===== END RECENT HOMEBRIDGE LOGS =====\n'
+}
+```
+
+Send only the relevant lines if requested, removing private information first.
+
+## 7. Finish testing or return to the regular release
+
+If you want to keep using the test version, make sure this plugin is enabled and its child bridge is running, if it uses one. Reopen any apps you closed when you have finished testing.
+
+To return to the regular npm release of Anthem Receiver Plus, paste this block in SSH. **That release may not include STR support yet**, so STR controls may stop working after switching back. Existing Plus users can instead restore the particular release they were using before testing.
+
+```bash
+{
+  printf '\n===== BEGIN RETURN TO REGULAR ANTHEM RELEASE =====\n'
+  if sudo hb-service stop; then
+    if sudo hb-service add homebridge-anthemreceiver-plus@latest; then
+      if sudo hb-service start; then
+        printf '\nPASS: Regular release installed and Homebridge started.\n'
+      else
+        printf '\nSTOP: Installed, but Homebridge did not start. Save the output above.\n'
+      fi
+    else
+      printf '\nSTOP: Installation failed; Homebridge remains stopped. Save the output above.\n'
+    fi
+  else
+    printf '\nSTOP: Could not stop Homebridge; no installation was attempted.\n'
+  fi
+  printf '\n===== END RETURN TO REGULAR ANTHEM RELEASE =====\n'
+}
+```
+
+Changing the installed version does not undo a **Disable** selection. If you disabled the plugin earlier and want to use it again, select **Enable** from its **⋮** menu and restart Homebridge. Start its child bridge too if it remains stopped.
+
+<details>
+<summary>Optional: technical details and background</summary>
+
+The installation branch is `str-experimental-install`; it includes compiled files. The source PR uses `str-experimental-support`. Maintainers should merge only the source PR.
+
+After identifying an STR, diagnostics use ten queries: `IDM?`, `IDS?`, `IDN?`, `ICN?`, `ISN01?`, `Z1POW?`, `Z1MUT?`, `Z1VOL?`, `Z1INP?`, and `Z1ALM?`. Only the first input name is sampled. STR listening-mode values are Stereo `7`, Mono `9`, Both Left `11`, and Both Right `12`. `IDN?` reads the MAC address, hidden in the default report. The diagnostic does not request native volume percentage; HomeKit volume is calculated from dB.
+
+The STR volume range is −96 to +7 dB in 0.5 dB steps. A configured maximum applies to the STR slider and up/down buttons. Diagnostics do not change that maximum.
+
+The report marks support as experimental. It cannot confirm physical control behavior, and it is not a recorder of all traffic sent by other apps.
+
+Initial evidence comes from [python-anthemav PR #40](https://github.com/nugget/python-anthemav/pull/40). Its owner reports distinguish PA/IA bypass behavior and describe a `Z1BRT?` query that can change STR balance. This plugin never sends that command. Report an unexpected balance change and stop that test if you encounter one. The upstream PR was open and unmerged when reviewed on 2026-09-12; physical PA/IA testing remains necessary.
+
+The Linux installation commands follow the [Homebridge APT command wrapper](https://github.com/homebridge/homebridge-apt-pkg/blob/latest/deb/opt/homebridge/hb-service-shim). The plugin-menu actions are defined by [Homebridge UI](https://github.com/homebridge/homebridge-config-ui-x/blob/latest/ui/src/app/modules/plugins/plugin-card/plugin-card.component.html).
+
+</details>
