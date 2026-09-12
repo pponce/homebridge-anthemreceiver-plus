@@ -1,0 +1,29 @@
+name: Build STR installation branch
+on:
+  push:
+    branches: [str-experimental-install]
+    paths-ignore: ['dist/**']
+permissions:
+  contents: write
+jobs:
+  build-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: str-experimental-install
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npm run lint
+      - run: npm test
+      - run: npm run check:package
+      - name: Commit compiled files to the installation branch only
+        run: |
+          test "$(git branch --show-current)" = "str-experimental-install"
+          git add -f dist
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Build STR installation files [skip ci]"
+            git push origin HEAD:refs/heads/str-experimental-install
+          fi
