@@ -43,7 +43,7 @@
     "@homebridge/plugin-ui-utils": "^2.2.6"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.9.6",
     "nodemon": "^3.1.9",
     "typescript": "^7.0.2",
     "playwright": "^1.56.1",
