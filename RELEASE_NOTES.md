@@ -1,11 +1,11 @@
-# Anthem Receiver Plus 1.2.2
+# Anthem Receiver Plus 1.2.3
 
-Fixes the two configuration-schema failures reported during Homebridge verification.
+Adds explicit support for Node.js 26 alongside Node.js 22 and 24.
 
-- Replace legacy boolean `required` flags with the standard object-level array. Host, Port and PanelBrightness retain their existing required status; zone names and maximum volume remain optional.
-- Add the optional lowercase `name` schema property for the Homebridge log label, with a default of Anthem Receiver Plus.
-- Check these schema requirements before publication.
+- Declare Node.js 22, 24, and 26 compatibility in the package engine range.
+- Run automated build, receiver, migration, browser UI, packaging, and production archive installation checks across all six Node.js 22/24/26 and Homebridge 1.8/2.x combinations.
+- Verify clean GitHub installations on all three supported Node.js versions.
 
-Update normally through Homebridge UI and restart the Homebridge instance or child bridge running this plugin. Existing configuration, the AnthemReceiver platform name and paired accessories are preserved.
+Update through Homebridge UI when version 1.2.3 is available on npm, then restart the Homebridge instance or child bridge running this plugin. Configuration, the AnthemReceiver platform name, and paired accessories are preserved. STR PA/IA support remains experimental.
 
-Node.js 22/24 and Homebridge 1.8/2.x compatibility are retained. STR PA/IA support remains experimental.
+GitHub publication and npm publication are separate steps. This GitHub release does not by itself publish the npm package.

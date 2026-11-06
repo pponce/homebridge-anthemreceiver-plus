@@ -40,7 +40,7 @@ Supported receiver families:
 - MRX SLM (single zone)
 - **Experimental:** STR Preamplifier (`STR PA`) and STR Integrated Amplifier (`STR IA`), single zone. Power, mute, normal inputs, dB volume and four STR listening modes are implemented; physical-device validation is pending. See [STR testing and diagnostic reports](STR_TESTING.md). ARC, brightness, menu navigation and Home Theatre Bypass selection are not enabled for STR.
 
-Homebridge 1.8 and 2.x on Node.js 22 or 24 are supported. Automated checks cover those combinations; see [package.json](package.json) for the declared engine ranges. The original plugin's broader, untested Node engine ranges are not carried into this new package.
+Homebridge 1.8 and 2.x on Node.js 22, 24, or 26 are supported. Automated checks cover all six combinations; see [package.json](package.json) for the declared engine ranges. Clean GitHub installations are also tested on all three Node.js versions.
 
 ![Anthem controls in Apple Home](AR6.jpg)
 

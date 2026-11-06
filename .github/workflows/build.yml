@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [22, 24]
+        node: [22, 24, 26]
         homebridge: ['^1.8.0', '^2.0.0']
     steps:
       - uses: actions/checkout@v7
@@ -37,10 +37,14 @@ jobs:
           node -e 'require(process.argv[1])' "$destination/node_modules/homebridge-anthemreceiver-plus"
   git-install:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
     steps:
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
       - name: Install this commit directly from GitHub with lifecycle scripts enabled
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -63,3 +67,38 @@ jobs:
           require(path.join(root, 'dist/ui-test.js'));
           console.log('Clean GitHub install generated dist and included the UI and its runtime dependency.');
           NODE
+  github-release:
+    needs: [test, git-install]
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'release: v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Publish the validated GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          tag="v$version"
+          [[ "$(git log -1 --format=%s)" == "release: $tag" ]]
+          [[ "$(gh api "repos/$GH_REPO/commits/main" --jq .sha)" == "$GITHUB_SHA" ]]
+          [[ -s RELEASE_NOTES.md ]]
+          if gh release view "$tag" >/dev/null 2>&1; then
+            [[ "$(gh api "repos/$GH_REPO/commits/$tag" --jq .sha)" == "$GITHUB_SHA" ]]
+            echo "GitHub release $tag already exists for this commit."
+          else
+            if existing_tag=$(gh api "repos/$GH_REPO/git/ref/tags/$tag" --jq .object.sha 2>release-tag-error.log); then
+              [[ "$(gh api "repos/$GH_REPO/commits/$tag" --jq .sha)" == "$GITHUB_SHA" ]]
+            else
+              grep -q 'HTTP 404' release-tag-error.log
+            fi
+            gh release create "$tag" --target "$GITHUB_SHA" --latest \
+              --title "Anthem Receiver Plus $version" --notes-file RELEASE_NOTES.md
+          fi

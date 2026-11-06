@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.2.3 — 2026-11-06
+
+- Add explicit Node.js 26 support alongside Node.js 22 and 24.
+- Test all six Node.js 22/24/26 and Homebridge 1.8/2.x combinations, including receiver simulations, migration, browser UI, and production archive installation.
+- Test clean GitHub installations on Node.js 22, 24, and 26.
+- Publish GitHub releases from explicit release commits only after all automated checks pass; npm publication remains a separate step.
+
 ## 1.2.2 — 2026-09-12
 
 - Correct the configuration schema to use an object-level required-property array instead of boolean required flags on individual fields.
